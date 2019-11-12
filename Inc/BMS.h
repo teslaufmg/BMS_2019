@@ -37,6 +37,9 @@ typedef struct BMS_struct {
 	int16_t c_max[4];
 	int16_t c_min[4];
 
+	uint16_t t_mean;  	//of the bank
+	uint16_t t_max; 	//of the bank
+
 	//CHARGE_PERCENTAGE
 	int32_t charge;
 

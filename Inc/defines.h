@@ -58,8 +58,8 @@
 #define CAN_RATE			3000 //ms
 #define CAN_TEMPERATURE_ID  3
 #define CAN_ERROR_FLAG_ID  	4
-#define CAN_CURRENT_ID		7
-#define CAN_GENERAL_ID		8
+#define CAN_CURRENT_ID		6
+#define CAN_GENERAL_ID		7
 
 //ERROR DEFINES:
 #define ERR_NO_ERROR 			0b000000000

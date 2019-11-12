@@ -441,9 +441,14 @@ void LTC_read(uint8_t LTC_READ, LTC_config *config, LTC_sensor *sensor){
 		config->command->NAME = LTC_COMMAND_RDAUXB;
 		LTC_send_command(config, sensor);
 
-		//		sensor->T_MIN = 60000;
-		//		sensor->T_MAX = 28000;
 		LTC_T_convert(sensor);
+
+		sensor->T_MAX = 0;
+
+		for(uint8_t i = 0; i < N_OF_THERMISTORS; i++){
+			if(sensor->GxV[i] > sensor->T_MAX)
+				sensor->T_MAX = sensor->GxV[i];
+		}
 
 	}
 	if (LTC_READ&LTC_READ_STATUS) {

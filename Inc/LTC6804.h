@@ -68,6 +68,8 @@ typedef struct LTC_sensor{
 	uint16_t VA; 		// 16 bits - get the analog voltage
 	uint16_t VD; 		// 16 bits - get the digital voltage
 
+	uint16_t T_MAX;
+
 	uint16_t V_MAX;
 	uint16_t V_MIN;
 	uint16_t V_DELTA;
