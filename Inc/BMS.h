@@ -34,6 +34,8 @@ typedef struct BMS_struct {
 	uint16_t v_delta;   //of the bank
 	//CURRENT
 	float current[4];
+	int16_t c_max[4];
+	int16_t c_min[4];
 
 	//CHARGE_PERCENTAGE
 	int32_t charge;

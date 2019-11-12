@@ -20,7 +20,7 @@
 #define ST_VOLTAGE					86
 #define MIN_V_CELL					1000
 #define MAX_V_CELL					1000
-#define N_OF_PACKS					4
+#define N_OF_PACKS					6
 #define N_OF_CELLS					12
 #define N_OF_THERMISTORS			4
 #define MAX_CELL_V_DISCHARGE		36000//36500
@@ -58,8 +58,8 @@
 #define CAN_RATE			3000 //ms
 #define CAN_TEMPERATURE_ID  3
 #define CAN_ERROR_FLAG_ID  	4
-#define CAN_CURRENT_ID		4
-#define CAN_GENERAL_ID		5
+#define CAN_CURRENT_ID		7
+#define CAN_GENERAL_ID		8
 
 //ERROR DEFINES:
 #define ERR_NO_ERROR 			0b000000000

@@ -109,8 +109,8 @@ void nexLoop(BMS_struct *BMS)
 		NexNumberSetValue(0, 0);
 		NexXfloatSetValue(0, BMS->v_TS/10);
 		NexXfloatSetValue(1, BMS->v_GLV/100);
-		NexXfloatSetValue(2, BMS->current[2]);
-		NexXfloatSetValue(3, aux);
+		NexXfloatSetValue(2, (int16_t)BMS->current[1]);
+		NexXfloatSetValue(3, (int16_t)BMS->c_min[1]);
 		NexXfloatSetValue(4, aux);
 		NexXfloatSetValue(5, HAL_GPIO_ReadPin(AIR_AUX_MINUS_GPIO_Port, AIR_AUX_MINUS_Pin));
 

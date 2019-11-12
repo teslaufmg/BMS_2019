@@ -65,8 +65,8 @@
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
-static float CURRENT_ZERO[4] = {2250, 2990, 2396, 2396};
-static const float CURRENT_GAIN[4] = {1.22, 1.52, 1.22, 1.22};
+static float CURRENT_ZERO[4] = {2240, 2240, 2240, 2240};
+static const float CURRENT_GAIN[4] = {1.22, 1.22, 1.22, 1.22};
 ErrorStatus  HSEStartUpStatus;
 HAL_StatusTypeDef FlashStatus;
 
@@ -111,15 +111,17 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc)
 
 //		if (c_zero_flag)
 //			CURRENT_ZERO[i] = ADC_BUF[i];
-		BMS->current[i] = (ADC_BUF[i] * CURRENT_GAIN[i]) - CURRENT_ZERO[i];
+		BMS->current[i] = filter(BMS->current[i], (((float)ADC_BUF[i] * CURRENT_GAIN[i])) - CURRENT_ZERO[i]);
 
 	}
 
-	BMS->v_GLV = (uint16_t)filter(BMS->v_GLV , ((ADC_BUF[4] + 250) * 4.5));
+	BMS->v_GLV = (uint16_t)filter(BMS->v_GLV , (((float)ADC_BUF[4] + 650) * 4.5));
 	//BMS->v_GLV = (uint16_t)ADC_BUF[4];
 
 
 	aux++;
+	if (aux > 100000)
+		aux = 0;
 	HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, 0);
 
 }
@@ -144,7 +146,9 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+
 extern DMA_HandleTypeDef hdma_usart3_rx;
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -174,7 +178,7 @@ extern DMA_HandleTypeDef hdma_usart3_rx;
 
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_BUF, 5);
 	//HAL_UART_DMAResume(&huart3);
-	USART_DMA_Init(&huart3, &hdma_usart3_rx);
+	//USART_DMA_Init(&huart3, &hdma_usart3_rx);
 	HAL_TIM_Base_Start_IT(&htim3);
 	HAL_TIM_Base_Start_IT(&htim4);
 
@@ -202,7 +206,7 @@ extern DMA_HandleTypeDef hdma_usart3_rx;
 		nexLoop(BMS);
 
 
-		HAL_Delay(50);
+		DWT_Delay_us(50000);
 
   /* USER CODE END WHILE */
 

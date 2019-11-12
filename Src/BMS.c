@@ -172,6 +172,12 @@ void BMS_monitoring(BMS_struct *BMS){
 
 	BMS->v_TS /= N_OF_PACKS/2;
 
+	for (uint8_t i = 0; i < 4; ++i) {
+		if(BMS->current[i] < BMS->c_min[i])
+			BMS->c_min[i] = BMS->current[i];
+		if(BMS->current[i] > BMS->c_max[i])
+			BMS->c_max[i] = BMS->current[i];
+	}
 
 
 	//	if (BMS->error_flag != ERR_NO_ERROR) {
@@ -273,7 +279,7 @@ void BMS_error(BMS_struct *BMS){
 		flag &= ~ERR_UNDER_VOLTAGE;
 	if(BMS->v_max >= 36000)
 		flag |= ERR_OVER_VOLTAGE;
-	else if(BMS->v_min <= 34000)
+	else if(BMS->v_max <= 34000)
 		flag &= ~ERR_OVER_VOLTAGE;
 
 
@@ -454,10 +460,10 @@ void BMS_can(BMS_struct *BMS){
 	CAN_Transmit(can_buffer, CAN_ID_TABLE[CAN_CURRENT_ID][0]);
 
 	sendString(CAN_ID_TABLE[CAN_CURRENT_ID][0],
-			BMS->current[0],
-			BMS->current[1],
-			BMS->current[2],
-			BMS->current[3]);
+			(int16_t)BMS->current[0],
+			(int16_t)BMS->current[1],
+			(int16_t)BMS->current[2],
+			(int16_t)BMS->current[3]);
 
 	uint32_t percent = 10000 - ((BMS->charge + 50000000)/14400);
 
