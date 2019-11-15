@@ -8,6 +8,7 @@
 
 
 extern uint8_t uart_user_message[256];	/* Buffer received for user access */
+uint8_t stat = 0;
 
 void uart3MessageReceived(void)
 {
@@ -20,15 +21,18 @@ void uart3MessageReceived(void)
 		case 0:
 			actual_page = N_PAGE0;
 			NexPageShow(N_PAGE1);
+			stat = 0;
 			break;
 
 		default:
-			if(uart_user_message[1] > 0 && uart_user_message[1] <= N_OF_PACKS){
+			if(uart_user_message[1] > 0 && (uart_user_message[1] - 1) < N_OF_PACKS){
 				actual_page = uart_user_message[1];
-				//NexPageShow(N_PAGE2);
-			}else if(uart_user_message[1] > 0 && uart_user_message[1] - N_OF_PACKS <= N_OF_PACKS){
+				stat = 0;
+				NexPageShow(N_PAGE2);
+			}else if(uart_user_message[1] > 0 && ((uart_user_message[1] - N_OF_PACKS - 1) < N_OF_PACKS)){
 				actual_page = uart_user_message[1];
-				//NexPageShow(N_PAGE3);
+				stat = 1;
+				NexPageShow(N_PAGE3);
 			}
 			//		case 5:
 			//			actual_page = N_PAGE5;
@@ -43,32 +47,41 @@ void uart3MessageReceived(void)
 }
 
 
-//uint8_t nexSetPageError(BMS_struct *BMS) {
-//
-//	uint8_t var01;
-//
-//	if(BMS->lowest_cell < 2800) {
-//		var01 = ;
-//	}
-////	else if(BMS->highest_cell > 3600) {
-////		var01 = nex_id[1];
-////	}
-////	else if(BMS->temperature_max > 600) {
-////		var01 = nex_id[2];
-////	}
-//	else var01 = 0;
-//
-//	return var01;
-//}
-
 int cmpfunc (const void * a, const void * b) {
 	return ( *(uint16_t*)a - *(uint16_t*)b );
 }
 
-extern int aux;
+uint8_t previous_page;
 
 void nexLoop(BMS_struct *BMS)
 {
+	actual_page =  NexGetPage();
+
+	if(previous_page != actual_page){
+		previous_page = actual_page;
+//		switch(actual_page)
+//		{
+//		case 0:
+//			//NexPageShow(N_PAGE1);
+//			break;
+//
+//		default:
+//			if(actual_page > 0 && (actual_page - 1) < N_OF_PACKS){
+//				//NexPageShow(N_PAGE2);
+//			}else if(actual_page > 0 && ((actual_page - N_OF_PACKS - 1) < N_OF_PACKS)){
+//				//NexPageShow(N_PAGE3);
+//			}
+//			//		case 5:
+//			//			actual_page = N_PAGE5;
+//			//			break;
+//			//
+//			//		case 6:
+//			//			actual_page = N_PAGE6;
+//			//			break;
+//
+//		}
+	}
+
 
 	if(NextError[0] == 1){
 		NexScrollingTextSetText(0, "Under Voltage");
@@ -109,36 +122,40 @@ void nexLoop(BMS_struct *BMS)
 		NexNumberSetValue(0, 0);
 		NexXfloatSetValue(0, BMS->v_TS/10);
 		NexXfloatSetValue(1, BMS->v_GLV/100);
-		NexXfloatSetValue(2, (int16_t)BMS->current[1]);
-		NexXfloatSetValue(3, (int16_t)BMS->c_min[1]);
-		NexXfloatSetValue(4, aux);
+		NexXfloatSetValue(2, (int16_t)BMS->current[0]);
+		NexXfloatSetValue(3, (int16_t)BMS->current[1]);
+		NexXfloatSetValue(4, HAL_GPIO_ReadPin(AIR_AUX_PLUS_GPIO_Port, AIR_AUX_PLUS_Pin));
 		NexXfloatSetValue(5, HAL_GPIO_ReadPin(AIR_AUX_MINUS_GPIO_Port, AIR_AUX_MINUS_Pin));
 
 		NexPictureSetPic(0, 12 + HAL_GPIO_ReadPin(AIR_AUX_PLUS_GPIO_Port, AIR_AUX_PLUS_Pin));
 		NexPictureSetPic(1, 12 + HAL_GPIO_ReadPin(AIR_AUX_MINUS_GPIO_Port, AIR_AUX_MINUS_Pin));
 
+
 		break;
 
 	default:
-		if(actual_page <= N_OF_PACKS){
+		if(actual_page - 1 < N_OF_PACKS ){
 			for(uint8_t i = 0; i < N_OF_CELLS; i++)
 				//buffer[i] = 12000 - (i * 1000);
 				buffer[i] = BMS->sensor[actual_page - 1]->CxV[i];
 
 			if(BMS->config->ORDER)
-				//qsort(buffer, 12, sizeof(uint16_t), cmpfunc);
+				qsort(buffer, 12, sizeof(uint16_t), cmpfunc);
 
 			NexVariableSetValue(1,N_OF_PACKS);
 			NexNumberSetValue(0,actual_page - 1);
 
-			for(uint8_t i = 0; i < N_OF_CELLS; i++)
+			for(uint8_t i = 0; i < N_OF_CELLS; i++){
 				NexXfloatSetValue(i, buffer[i]);
+				if((BMS->sensor[actual_page - 1]->DCC & (1 << i)) && !BMS->config->ORDER)
+					NexXfloatSetCollor(i, 65504);
+			}
 
 			NexXfloatSetValue(12,BMS->sensor[actual_page - 1]->GxV[4]);
 			NexXfloatSetValue(13,BMS->sensor[actual_page - 1]->GxV[3]);
 			NexXfloatSetValue(14,BMS->sensor[actual_page - 1]->GxV[2]);
 			NexXfloatSetValue(15,BMS->sensor[actual_page - 1]->GxV[1]);
-		}else if(actual_page - N_OF_PACKS - 1 <= N_OF_PACKS){
+		}else if(actual_page - N_OF_PACKS - 1 < N_OF_PACKS){
 			NexVariableSetValue(1,N_OF_PACKS);
 			NexNumberSetValue(0,actual_page - N_OF_PACKS - 1);
 			NexXfloatSetValue(0, BMS->sensor[actual_page - N_OF_PACKS - 1]->V_MAX);
@@ -149,13 +166,11 @@ void nexLoop(BMS_struct *BMS)
 			NexXfloatSetValue(5, (int16_t)BMS->current[0]);
 			NexXfloatSetValue(6, (int16_t)BMS->current[2]);
 			NexXfloatSetValue(7, (int16_t)BMS->current[3]);
-			NexXfloatSetValue(8, (int16_t)BMS->current[1]/10);
-			//			BMS->config->ORDER = NexVariableGetValue(0);
+			NexXfloatSetValue(8, (int16_t)BMS->current[1]);
+			BMS->config->ORDER = NexGetOrder();
+
 			//			NexXfloatSetValue(0, NexVariableGetValue(1));
 		}
-		break;
-
-	case N_PAGE7:
 		break;
 
 	}

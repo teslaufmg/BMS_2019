@@ -102,6 +102,7 @@ void BMS_init(BMS_struct *BMS){
 	BMS->v_min = 50000;
 	BMS->v_max = 0;
 
+	BMS->mode = 0;
 
 	LTC_init(BMS->config);
 
@@ -125,14 +126,13 @@ void BMS_init(BMS_struct *BMS){
 }
 void BMS_monitoring(BMS_struct *BMS){
 
-	BMS->v_min = 50000;
-	BMS->v_max = 0;
+
+	BMS->v_min = BMS->sensor[0]->V_MIN;
+	BMS->v_max = BMS->sensor[0]->V_MAX;
 	BMS->v_TS = 0;
 
-	BMS->t_max = 0;
-	BMS->t_mean = 0;
-
-	BMS->config->ORDER = 1;
+	BMS->v_min = 50000;
+	BMS->v_max = 0;
 
 	BMS->config->command->NAME = LTC_COMMAND_ADCV;
 	BMS->config->command->BROADCAST = TRUE;
@@ -163,27 +163,15 @@ void BMS_monitoring(BMS_struct *BMS){
 		if(BMS->sensor[i]->V_MAX > BMS->v_max)
 			BMS->v_max = BMS->sensor[i]->V_MAX;
 
-		if(BMS->sensor[i]->T_MAX > BMS->t_max)
-			BMS->t_max = BMS->sensor[i]->T_MAX;
-
-
 		BMS->v_TS += BMS->sensor[i]->SOC;
 
-		BMS->t_mean += BMS->sensor[i]->T_MAX;
-
-		//LTC_balance(BMS->config, BMS->sensor[i]);
+//		if(BMS->mode == 1)
+//			LTC_balance(BMS->config, BMS->sensor[i]);
 
 	}
 
-	BMS->t_mean /= N_OF_PACKS;
 	BMS->v_TS /= N_OF_PACKS/2;
 
-	for (uint8_t i = 0; i < 4; ++i) {
-		if(BMS->current[i] < BMS->c_min[i])
-			BMS->c_min[i] = BMS->current[i];
-		if(BMS->current[i] > BMS->c_max[i])
-			BMS->c_max[i] = BMS->current[i];
-	}
 
 
 	//	if (BMS->error_flag != ERR_NO_ERROR) {
@@ -466,20 +454,19 @@ void BMS_can(BMS_struct *BMS){
 	CAN_Transmit(can_buffer, CAN_ID_TABLE[CAN_CURRENT_ID][0]);
 
 	sendString(CAN_ID_TABLE[CAN_CURRENT_ID][0],
-			(int16_t)BMS->current[0],
-			(int16_t)BMS->current[1],
-			(int16_t)BMS->current[2],
-			(int16_t)BMS->current[3]);
+			BMS->current[0],
+			BMS->current[1],
+			BMS->current[2],
+			BMS->current[3]);
 
 	uint32_t percent = 10000 - ((BMS->charge + 50000000)/14400);
 
-	can_buf(can_buffer,
-			BMS->v_GLV,
+	can_buf(can_buffer, BMS->v_GLV,
 			(int16_t)(percent),
 			0,
 			BMS->AIR);
 
-	CAN_Transmit(can_buffer, CAN_ID_TABLE[CAN_GENERAL_ID][0]);
+	CAN_Transmit(can_buffer, 52);
 
 	sendString(CAN_ID_TABLE[CAN_GENERAL_ID][0],
 			BMS->v_GLV,
@@ -487,14 +474,6 @@ void BMS_can(BMS_struct *BMS){
 			BMS->AIR,
 			BMS->error);
 
-
-	can_buf(can_buffer,
-			BMS->v_GLV,
-			BMS->v_TS,
-			BMS->t_mean,
-			BMS->t_max);
-
-	CAN_Transmit(can_buffer, CAN_ID_TABLE[CAN_GENERAL_ID][1]);
 
 	//	can_buffer[0] = c_mean;
 	//	can_buffer[1] = c_mean >> 8;
@@ -505,7 +484,7 @@ void BMS_can(BMS_struct *BMS){
 	//	can_buffer[6] = t_max;
 	//	can_buffer[7] = t_max >> 8;
 
-	//CAN_Transmit(can_buffer, CAN_ID_TABLE[CAN_GENERAL_ID][1]);
+	CAN_Transmit(can_buffer, CAN_ID_TABLE[CAN_GENERAL_ID][1]);
 
 	//	sendString(CAN_ID_TABLE[CAN_GENERAL_ID][1],
 	//			c_mean,

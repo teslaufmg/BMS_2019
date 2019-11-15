@@ -31,8 +31,8 @@ void sendCommand(const char* cmd)
       huart3.Instance->DR;
    }
 
-   HAL_UART_Transmit (&huart3, (uint8_t*) cmd, strlen (cmd), 50);
-   HAL_UART_Transmit (&huart3, (uint8_t*)&ENDTERMS, 3, 50);
+   HAL_UART_Transmit (&huart3, (uint8_t*) cmd, strlen (cmd), 100);
+   HAL_UART_Transmit (&huart3, (uint8_t*)&ENDTERMS, 3, 100);
 }
 
 int recvRetCommandFinished(void)
@@ -107,6 +107,7 @@ int recvRetString(char* buffer,int len)
 int nexInit(void)
 {
    int ret1=0;
+
    int ret2=0;
    
    sendCommand ("");
@@ -154,7 +155,7 @@ int NexScrollingTextSetPic(int ScrollingText,int value)
 int NexPictureSetPic(int Picture,int value)
 {
    char cmd[20]={0};
-   sprintf (cmd, "p0.pic=13");
+   sprintf (cmd, "p%d.pic=%d", Picture, value);
    sendCommand (cmd);
    return recvRetCommandFinished ();
 }
@@ -181,6 +182,14 @@ int NexNumberGetValue(int Number)
    sprintf (cmd, "get n%d.val", Number);
    sendCommand (cmd);
    return recvRetNumber ();
+}
+
+int NexXfloatSetCollor(int Number, int value)
+{
+	char cmd[15]={0};
+	sprintf (cmd, "x%d.pco=%d", Number, value) ;
+	sendCommand (cmd);
+	return recvRetCommandFinished ();
 }
 
 int NexXfloatSetValue(int Number, int value)
@@ -309,6 +318,22 @@ int NexVariableGetValue(int Variable)
 {
    char cmd[15]={0};
    sprintf (cmd,"get va%d.val", Variable);
+   sendCommand (cmd);
+   return recvRetNumber ();
+}
+
+int NexGetPage()
+{
+   char cmd[20]={0};
+   sprintf (cmd,"get geral.va0.val");
+   sendCommand (cmd);
+   return recvRetNumber ();
+}
+
+int NexGetOrder()
+{
+   char cmd[20]={0};
+   sprintf (cmd,"get geral.ord.val");
    sendCommand (cmd);
    return recvRetNumber ();
 }

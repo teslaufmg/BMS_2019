@@ -40,7 +40,7 @@
 #ifndef __can_H
 #define __can_H
 #ifdef __cplusplus
- extern "C"
+ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/

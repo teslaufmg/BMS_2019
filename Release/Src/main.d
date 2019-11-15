@@ -1,5 +1,5 @@
 Src/main.o: ../Src/main.c \
- C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/LTC6804.h \
+ C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/main.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/stm32f1xx_hal_conf.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/main.h \
@@ -29,7 +29,6 @@ Src/main.o: ../Src/main.c \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h \
- C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/main.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/adc.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/can.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/dma.h \
@@ -38,6 +37,7 @@ Src/main.o: ../Src/main.c \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/usart.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/gpio.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/BMS.h \
+ C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/LTC6804.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/DHAB_s125.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/defines.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/dwt_stm32_delay.h \
@@ -49,7 +49,7 @@ Src/main.o: ../Src/main.c \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/BMS.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/DMA_USART.h
 
-C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/LTC6804.h:
+C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/main.h:
 
 C:/Users/hngui/Documents/GitHub/BMS_2019/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:
 
@@ -109,8 +109,6 @@ C:/Users/hngui/Documents/GitHub/BMS_2019/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f
 
 C:/Users/hngui/Documents/GitHub/BMS_2019/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h:
 
-C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/main.h:
-
 C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/adc.h:
 
 C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/can.h:
@@ -126,6 +124,8 @@ C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/usart.h:
 C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/gpio.h:
 
 C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/BMS.h:
+
+C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/LTC6804.h:
 
 C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/DHAB_s125.h:
 

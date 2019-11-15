@@ -43,6 +43,8 @@
 
 
 extern ADC_HandleTypeDef hadc1;
+extern BMS_struct *BMS;
+extern int32_t ADC_BUF[5];
 
 //extern int16_t ADC_BUF[5];
 uint16_t tim4_counter;
@@ -72,8 +74,6 @@ void NMI_Handler(void)
   /* USER CODE END NonMaskableInt_IRQn 0 */
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
 
-
-
   /* USER CODE END NonMaskableInt_IRQn 1 */
 }
 
@@ -88,7 +88,6 @@ void HardFault_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
-	  NVIC_SystemReset();
     /* USER CODE END W1_HardFault_IRQn 0 */
   }
   /* USER CODE BEGIN HardFault_IRQn 1 */
@@ -107,7 +106,6 @@ void MemManage_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_MemoryManagement_IRQn 0 */
-		NVIC_SystemReset();
     /* USER CODE END W1_MemoryManagement_IRQn 0 */
   }
   /* USER CODE BEGIN MemoryManagement_IRQn 1 */
@@ -126,7 +124,6 @@ void BusFault_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_BusFault_IRQn 0 */
-		NVIC_SystemReset();
     /* USER CODE END W1_BusFault_IRQn 0 */
   }
   /* USER CODE BEGIN BusFault_IRQn 1 */
@@ -145,7 +142,6 @@ void UsageFault_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_UsageFault_IRQn 0 */
-		NVIC_SystemReset();
     /* USER CODE END W1_UsageFault_IRQn 0 */
   }
   /* USER CODE BEGIN UsageFault_IRQn 1 */
@@ -237,15 +233,17 @@ void DMA1_Channel3_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel3_IRQn 0 */
 
   /* USER CODE END DMA1_Channel3_IRQn 0 */
-  //HAL_DMA_IRQHandler(&hdma_usart3_rx);
+  HAL_DMA_IRQHandler(&hdma_usart3_rx);
   /* USER CODE BEGIN DMA1_Channel3_IRQn 1 */
-	DMA_IrqHandler(&hdma_usart3_rx, &huart3);
+	//DMA_IrqHandler(&hdma_usart3_rx, &huart3);
   /* USER CODE END DMA1_Channel3_IRQn 1 */
 }
 
 /**
 * @brief This function handles ADC1 and ADC2 global interrupts.
 */
+int i = 0;
+
 void ADC1_2_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC1_2_IRQn 0 */
@@ -281,7 +279,7 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
   /* USER CODE END USB_LP_CAN1_RX0_IRQn 0 */
   HAL_CAN_IRQHandler(&hcan);
   /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 1 */
-  CAN_Receive_IT();
+	CAN_Receive_IT();
 
   /* USER CODE END USB_LP_CAN1_RX0_IRQn 1 */
 }
@@ -311,6 +309,8 @@ void TIM3_IRQHandler(void)
   HAL_TIM_IRQHandler(&htim3);
   /* USER CODE BEGIN TIM3_IRQn 1 */
 
+
+
   /* USER CODE END TIM3_IRQn 1 */
 }
 
@@ -326,6 +326,25 @@ void TIM4_IRQHandler(void)
   HAL_TIM_IRQHandler(&htim4);
   /* USER CODE BEGIN TIM4_IRQn 1 */
 
+
+	tim4_counter++;
+
+
+	if(tim4_counter == 5000){
+		BMS->mode = 1;
+		for (int i = 0; i < N_OF_PACKS; ++i) {
+			LTC_set_balance_flag(BMS->config, BMS->sensor[i]);
+		}
+	}else if(tim4_counter == 60000){
+		BMS->mode = 0;
+		for (int i = 0; i < N_OF_PACKS; ++i) {
+			LTC_reset_balance_flag(BMS->config, BMS->sensor[i]);
+		}
+	}
+
+	if(tim4_counter > 60000){
+		tim4_counter = 0;
+	}
   /* USER CODE END TIM4_IRQn 1 */
 }
 
@@ -337,11 +356,12 @@ void USART3_IRQHandler(void)
   /* USER CODE BEGIN USART3_IRQn 0 */
 
   /* USER CODE END USART3_IRQn 0 */
-  //HAL_UART_IRQHandler(&huart3);
+  HAL_UART_IRQHandler(&huart3);
   /* USER CODE BEGIN USART3_IRQn 1 */
-	USART_IrqHandler(&huart3, &hdma_usart3_rx);
+	//USART_IrqHandler(&huart3, &hdma_usart3_rx);
 
-	uart3MessageReceived();
+
+	//uart3MessageReceived();
 
   /* USER CODE END USART3_IRQn 1 */
 }
