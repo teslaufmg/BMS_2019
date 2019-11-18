@@ -5,18 +5,18 @@
 #include <stdlib.h>
 #include "nextion.h"
 #include "nextion_functions.h"
+extern UART_HandleTypeDef huart3;
 
-
-extern uint8_t uart_user_message[256];	/* Buffer received for user access */
+extern uint8_t uart_buf[8];	/* Buffer received for user access */
 uint8_t stat = 0;
 
 void uart3MessageReceived(void)
 {
 
 	/* If the message is to change the nextion page */
-	if(uart_user_message[0] == 0x71 && uart_user_message[5] == 0xFF && uart_user_message[6] == 0xFF && uart_user_message[7] == 0xFF)
+	if(uart_buf[0] == 0x71 && uart_buf[5] == 0xFF && uart_buf[6] == 0xFF && uart_buf[7] == 0xFF)
 	{
-		switch(uart_user_message[1])
+		switch(uart_buf[1])
 		{
 		case 0:
 			actual_page = N_PAGE0;
@@ -25,12 +25,12 @@ void uart3MessageReceived(void)
 			break;
 
 		default:
-			if(uart_user_message[1] > 0 && (uart_user_message[1] - 1) < N_OF_PACKS){
-				actual_page = uart_user_message[1];
+			if(uart_buf[1] > 0 && (uart_buf[1] - 1) < N_OF_PACKS){
+				actual_page = uart_buf[1];
 				stat = 0;
 				NexPageShow(N_PAGE2);
-			}else if(uart_user_message[1] > 0 && ((uart_user_message[1] - N_OF_PACKS - 1) < N_OF_PACKS)){
-				actual_page = uart_user_message[1];
+			}else if(uart_buf[1] > 0 && ((uart_buf[1] - N_OF_PACKS - 1) < N_OF_PACKS)){
+				actual_page = uart_buf[1];
 				stat = 1;
 				NexPageShow(N_PAGE3);
 			}
@@ -51,10 +51,7 @@ int cmpfunc (const void * a, const void * b) {
 	return ( *(uint16_t*)a - *(uint16_t*)b );
 }
 
-extern int aux;
-
-void nexLoop(BMS_struct *BMS)
-{
+void nexLoop(BMS_struct *BMS){
 
 	if(NextError[0] == 1){
 		NexScrollingTextSetText(0, "Under Voltage");
@@ -89,8 +86,6 @@ void nexLoop(BMS_struct *BMS)
 	{
 	case N_PAGE0:
 
-
-
 		NexVariableSetValue(0, BMS->AIR);
 		NexNumberSetValue(0, 0);
 		NexXfloatSetValue(0, BMS->v_TS/10);
@@ -113,14 +108,14 @@ void nexLoop(BMS_struct *BMS)
 				buffer[i] = BMS->sensor[actual_page - 1]->CxV[i];
 
 			if(BMS->config->ORDER)
-				//qsort(buffer, 12, sizeof(uint16_t), cmpfunc);
+				qsort(buffer, 12, sizeof(uint16_t), cmpfunc);
 
 			NexVariableSetValue(1,N_OF_PACKS);
 			NexNumberSetValue(0,actual_page - 1);
 
 			for(uint8_t i = 0; i < N_OF_CELLS; i++){
 				NexXfloatSetValue(i, buffer[i]);
-				if(BMS->sensor[actual_page - 1]->DCC & (1 << i))
+				if((BMS->sensor[actual_page - 1]->DCC & (1 << i)) && !BMS->config->ORDER)
 					NexXfloatSetCollor(i, 65504);
 			}
 
@@ -140,11 +135,11 @@ void nexLoop(BMS_struct *BMS)
 			NexXfloatSetValue(6, (int16_t)BMS->current[2]);
 			NexXfloatSetValue(7, (int16_t)BMS->current[3]);
 			NexXfloatSetValue(8, (int16_t)BMS->current[1]);
-			//			BMS->config->ORDER = NexVariableGetValue(0);
+			BMS->config->ORDER = NexGetOrder();
+
 			//			NexXfloatSetValue(0, NexVariableGetValue(1));
 		}
 		break;
-
 	}
 }
 

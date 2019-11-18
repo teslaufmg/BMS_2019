@@ -43,10 +43,15 @@
 
 
 extern ADC_HandleTypeDef hadc1;
+extern UART_HandleTypeDef huart3;
 extern BMS_struct *BMS;
+extern int32_t ADC_BUF[5];
+extern uint8_t UART_RX[8];
 
 //extern int16_t ADC_BUF[5];
-uint16_t tim4_counter;
+uint16_t balance_timer, uart3_timer;
+
+
 
 /* USER CODE END 0 */
 
@@ -234,7 +239,9 @@ void DMA1_Channel3_IRQHandler(void)
   /* USER CODE END DMA1_Channel3_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_usart3_rx);
   /* USER CODE BEGIN DMA1_Channel3_IRQn 1 */
-	DMA_IrqHandler(&hdma_usart3_rx, &huart3);
+
+
+
   /* USER CODE END DMA1_Channel3_IRQn 1 */
 }
 
@@ -306,6 +313,8 @@ void TIM3_IRQHandler(void)
   HAL_TIM_IRQHandler(&htim3);
   /* USER CODE BEGIN TIM3_IRQn 1 */
 
+
+
   /* USER CODE END TIM3_IRQn 1 */
 }
 
@@ -322,23 +331,27 @@ void TIM4_IRQHandler(void)
   /* USER CODE BEGIN TIM4_IRQn 1 */
 
 
-	tim4_counter++;
+	balance_timer++;
+	uart3_timer++;
+
+	//	if(uart3_timer > 100){
+	//		HAL_UART_Receive_IT(&huart3, UART_RX, 4);
+	//		uart3_timer = 0;
+	//	}
 
 
-	if(tim4_counter == 5000){
+
+	if(balance_timer == 5000){
 		BMS->mode = 1;
 		for (int i = 0; i < N_OF_PACKS; ++i) {
 			LTC_set_balance_flag(BMS->config, BMS->sensor[i]);
 		}
-	}else if(tim4_counter == 60000){
+	}else if(balance_timer == 60000){
 		BMS->mode = 0;
 		for (int i = 0; i < N_OF_PACKS; ++i) {
 			LTC_reset_balance_flag(BMS->config, BMS->sensor[i]);
 		}
-	}
-
-	if(tim4_counter > 60000){
-		tim4_counter = 0;
+		balance_timer = 0;
 	}
   /* USER CODE END TIM4_IRQn 1 */
 }
@@ -353,9 +366,6 @@ void USART3_IRQHandler(void)
   /* USER CODE END USART3_IRQn 0 */
   HAL_UART_IRQHandler(&huart3);
   /* USER CODE BEGIN USART3_IRQn 1 */
-	USART_IrqHandler(&huart3, &hdma_usart3_rx);
-
-	uart3MessageReceived();
 
   /* USER CODE END USART3_IRQn 1 */
 }

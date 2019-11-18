@@ -200,6 +200,18 @@ int NexXfloatSetValue(int Number, int value)
    return recvRetCommandFinished ();
 }
 
+int NexWaveformAdd(int id, int channel, int value)
+{
+	if (value < 0) {
+		value = 0;
+	}
+   char cmd[20]={0};
+   sprintf (cmd, "add %d,%d,%d", id, channel, value) ;
+   sendCommand (cmd);
+   return recvRetCommandFinished ();
+}
+
+
 int NexButtonGetText(int Button, char *buffer, int len)
 {
    char cmd[15]={0};

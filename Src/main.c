@@ -32,7 +32,7 @@
  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF henrique bobo SUCH DAMAGE.
  *
  ******************************************************************************
  */
@@ -49,6 +49,7 @@
 
 /* USER CODE BEGIN Includes */
 
+#include "stm32f1xx_hal.h"
 #include "BMS.h"
 #include <stdlib.h>
 #include "dwt_stm32_delay.h"
@@ -66,19 +67,18 @@
 
 //static float CURRENT_ZERO[4] = {2250, 2990, 2396, 2396};
 //static const float CURRENT_GAIN[4] = {1.22, 1.52, 1.22, 1.22};
-static float CURRENT_ZERO[4] = {2240, 2240, 2240, 2240};
-static const float CURRENT_GAIN[4] = {1.22, 1.22, 1.22, 1.22};
+static float CURRENT_ZERO[4] = {2223, 2750, 2223, 2227};
+static const float CURRENT_GAIN[4] = {1.22, 1.51, 1.22, 1.22};
 ErrorStatus  HSEStartUpStatus;
 HAL_StatusTypeDef FlashStatus;
 
 BMS_struct* BMS;
 int32_t ADC_BUF[5];
-uint8_t UART_RX[4];
 uint32_t adc_time;
 uint8_t mode_button = 0, debounce_flag, accept_flag, accept_time, debounce_time, mode;
 uint16_t VirtAddVarTab[NumbOfVar] = {0x5555, 0x6666, 0x7777};
 
-uint8_t DMA_RX_Buffer[256];	/* Local DMA buffer for circular DMA */
+extern DMA_HandleTypeDef hdma_usart3_rx;
 
 /* USER CODE END PV */
 
@@ -92,12 +92,12 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN 0 */
 
-#define N_MEAN 1024
+#define FILTER_GAIN 255
 
 int aux = 0;
 
-float filter(float mean, float new){
-	return mean + (new - mean)/N_MEAN;
+float filter(float old, float new){
+	return (FILTER_GAIN * old + new) / (FILTER_GAIN + 1);
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc)
@@ -105,13 +105,14 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc)
 
 	for(uint8_t i = 0; i < 4; i++){
 
-		if (!HAL_GPIO_ReadPin(AIR_AUX_MINUS_GPIO_Port, AIR_AUX_MINUS_Pin))
-			CURRENT_ZERO[i] = ADC_BUF[i] * CURRENT_GAIN[i];
+		//CURRENT_ZERO[i] = ((float)ADC_BUF[i] * (float)CURRENT_GAIN[i]);
 
-		BMS->current[i] = filter(BMS->current[i], (((float)ADC_BUF[i] * CURRENT_GAIN[i])) - CURRENT_ZERO[i]);//		BMS->current[i] = filter(BMS->current[i], (ADC_BUF[i]));
+		BMS->c_adc[i] = filter((float)BMS->c_adc[i], (float)ADC_BUF[i]);
+
+		BMS->current[i] = filter(BMS->current[i], ((float)ADC_BUF[i] * CURRENT_GAIN[i]) - CURRENT_ZERO[i]);//		BMS->current[i] = filter(BMS->current[i], (ADC_BUF[i]));
+
 	}
-
-	BMS->v_GLV = (uint16_t)filter(BMS->v_GLV , ((ADC_BUF[4] + 400) * 4.5));
+	BMS->v_GLV = filter(BMS->v_GLV , ((float)(ADC_BUF[4] + 400) * 4.5));
 
 }
 
@@ -135,7 +136,6 @@ int main(void)
 	HAL_Init();
 
 	/* USER CODE BEGIN Init */
-	extern DMA_HandleTypeDef hdma_usart3_rx;
 	/* USER CODE END Init */
 
 	/* Configure the system clock */
@@ -163,32 +163,30 @@ int main(void)
 	DWT_Delay_Init();
 
 	HAL_ADC_Start_DMA(&hadc1, ADC_BUF, 5);
-
-	//USART_DMA_Init(&huart3, &hdma_usart3_rx);
-
-	BMS = (BMS_struct*) calloc(1, sizeof(BMS_struct));
-	BMS_init(BMS);
-
-
-
-	//LTC_balance_test(BMS->config, BMS->sensor[0]);
-
-
-	//		for (int i = 0; i < N_OF_PACKS; ++i) {
-	//			LTC_balance_test(BMS->config, BMS->sensor[i]);
-	//		}
-
-
+	USART_DMA_Init(&huart3, &hdma_usart3_rx);
 
 	HAL_TIM_Base_Start_IT(&htim3);
 	HAL_TIM_Base_Start_IT(&htim4);
 
 
-	//	HAL_UART_Receive_DMA(&huart3, UART_RX, 256);
-	//	huart3.gState = HAL_UART_STATE_READY;
-	//	huart3.RxState = HAL_UART_STATE_READY;
+
+	BMS = (BMS_struct*) calloc(1, sizeof(BMS_struct));
+	BMS_init(BMS);
+
+//	DWT_Delay_us(1000000);
+//
+//	for(uint8_t i = 0; i < 4; i++){
+//		CURRENT_ZERO[i] = ((float)ADC_BUF[i] * (float)CURRENT_GAIN[i]);
+//	}
+	//			for (int i = 0; i < N_OF_PACKS; ++i) {
+	//				LTC_balance_test(BMS->config, BMS->sensor[i]);
+	//			}
 
 	NexPageShow(1);
+
+
+
+
 
 	/* USER CODE END 2 */
 
@@ -197,13 +195,12 @@ int main(void)
 
 	while (1)
 	{
-
 		BMS_monitoring(BMS);
 		BMS_error(BMS);
 		BMS_can(BMS);
 		nexLoop(BMS);
 
-		//DWT_Delay_us(10000);
+		DWT_Delay_us(100000);
 
 		/* USER CODE END WHILE */
 

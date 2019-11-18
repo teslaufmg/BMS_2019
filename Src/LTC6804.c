@@ -495,6 +495,7 @@ void LTC_reset_balance_flag(LTC_config *config, LTC_sensor *sensor){
 
 void LTC_balance(LTC_config *config, LTC_sensor *sensor){
 
+
 	config->command->BROADCAST = FALSE;
 	config->command->NAME = LTC_COMMAND_WRCFG;
 	LTC_send_command(config, sensor);

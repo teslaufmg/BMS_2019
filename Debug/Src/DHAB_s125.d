@@ -1,6 +1,5 @@
 Src/DHAB_s125.o: ../Src/DHAB_s125.c \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/DHAB_s125.h \
- C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/defines.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/stm32f1xx_hal_conf.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/main.h \
@@ -35,8 +34,6 @@ Src/DHAB_s125.o: ../Src/DHAB_s125.c \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/usart.h
 
 C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/DHAB_s125.h:
-
-C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/defines.h:
 
 C:/Users/hngui/Documents/GitHub/BMS_2019/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:
 

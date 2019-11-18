@@ -55,7 +55,7 @@ void DMA_IrqHandler (DMA_HandleTypeDef *hdma, UART_HandleTypeDef *huart)
 		/* Prepare DMA for next transfer */
         /* Important! DMA stream won't start if all flags are not cleared first */
  
-        regs->IFCR = 0x3FU << hdma->ChannelIndex; 			/* Clear all interrupts */
+        //regs->IFCR = 0x3FU << hdma->ChannelIndex; 			/* Clear all interrupts */
 		hdma->Instance->CMAR = (uint32_t)DMA_RX_Buffer;   	/* Set memory address for DMA again */
         hdma->Instance->CNDTR = DMA_RX_BUFFER_SIZE;    		/* Set number of bytes to receive */
         hdma->Instance->CCR |= DMA_CCR_EN;            		/* Start DMA transfer */

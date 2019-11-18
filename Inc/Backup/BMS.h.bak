@@ -32,6 +32,8 @@ typedef struct BMS_struct {
 	uint16_t v_min;  	//of the bank
 	uint16_t v_max; 	//of the bank
 	uint16_t v_delta;   //of the bank
+	uint16_t t_max;		//of the bank
+
 	//CURRENT
 	float current[4];
 

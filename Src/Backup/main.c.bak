@@ -73,9 +73,10 @@ HAL_StatusTypeDef FlashStatus;
 
 BMS_struct* BMS;
 int32_t ADC_BUF[5];
-uint8_t UART_RX[256];
+uint8_t UART_RX[8];
 uint32_t adc_time;
 uint8_t mode_button = 0, debounce_flag, accept_flag, accept_time, debounce_time, mode;
+uint8_t uart_buf[32], uart_buf_increment = 0, uart_buf_end, uart_message[32];
 uint16_t VirtAddVarTab[NumbOfVar] = {0x5555, 0x6666, 0x7777};
 
 uint8_t DMA_RX_Buffer[256];	/* Local DMA buffer for circular DMA */
@@ -92,7 +93,7 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN 0 */
 
-#define N_MEAN 128
+#define N_MEAN 1024
 
 int aux = 0;
 
@@ -100,28 +101,66 @@ float filter(float mean, float new){
 	return mean + (new - mean)/N_MEAN;
 }
 
+void  HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+
+	if(uart_buf_increment >= 31){
+		uart_buf_increment = 0;
+		memset(uart_buf, 0, 32);
+	}
+
+	for(uint8_t i = 0; i < 8; i++){
+		uart_buf[uart_buf_increment] = UART_RX[i];
+		uart_buf_increment++;
+	}
+
+	uart_buf_end = 0;
+
+	for(uint8_t i = 0; i < 32; i++){
+
+		if (uart_buf_end >= 3)
+			uart_buf[i] = 0;
+		else if( uart_buf[i] == 0xff)
+			uart_buf_end++;
+
+	}
+
+	if (uart_buf_end == 3){
+		uart_buf_increment = 31;
+		//HAL_UART_DMAPause(&huart3);
+		uart3MessageReceived();
+	}
+//
+//	__HAL_UART_ENABLE_IT(huart, UART_IT_PE);
+//	__HAL_UART_ENABLE_IT(huart, UART_IT_ERR);
+//	//__HAL_UNLOCK(huart);
+//	__HAL_UART_ENABLE_IT(huart, UART_IT_RXNE);
+
+//	HAL_UART_Receive_DMA(&huart3, UART_RX, 8);
+
+	huart3.gState = HAL_UART_STATE_READY;
+	huart3.RxState = HAL_UART_STATE_READY;
+
+
+}
+
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc)
 {
 
-//	BMS->current[0] = (uint16_t)filter(BMS->v_GLV , (HAL_ADC_GetValue(&hadc1) + 250) * 4.5);
-//	BMS->current[1] = HAL_ADC_GetValue(&hadc1);
-//	BMS->current[2] = HAL_ADC_GetValue(&hadc1);
-//	BMS->current[3] = HAL_ADC_GetValue(&hadc1);
-//	BMS->v_GLV = (uint16_t)filter(BMS->v_GLV , (HAL_ADC_GetValue(&hadc1) + 250) * 4.5);
-
 	for(uint8_t i = 0; i < 4; i++){
-
-		//		if (c_zero_flag)
-		//			CURRENT_ZERO[i] = ADC_BUF[i];
-		BMS->current[i] = filter(BMS->current[i], (((float)ADC_BUF[i] * CURRENT_GAIN[i])) - CURRENT_ZERO[i]);//		BMS->current[i] = filter(BMS->current[i], (ADC_BUF[i]));
+		//
+		//		if (!HAL_GPIO_ReadPin(AIR_AUX_PLUS_GPIO_Port, AIR_AUX_PLUS_Pin)){
+		//
+		//			CURRENT_ZERO[i] = ADC_BUF[i] * CURRENT_GAIN[i];
+		//		}
+		//
+		//		BMS->current[i] = filter(BMS->current[i], (((float)ADC_BUF[i] * CURRENT_GAIN[i])) - CURRENT_ZERO[i]);//		BMS->current[i] = filter(BMS->current[i], (ADC_BUF[i]));
+		//
+		BMS->current[i] = filter(BMS->current[i],ADC_BUF[i]);
 	}
 
-	BMS->v_GLV = (uint16_t)filter(BMS->v_GLV , ((ADC_BUF[4] + 250) * 4.5));
-	//BMS->v_GLV = (uint16_t)ADC_BUF[4];
 
-
-	aux++;
-	//HAL_GPIO_WritePin(DEBUG_GPIO_Port, DEBUG_Pin, 0);
+	BMS->v_GLV = (uint16_t)filter(BMS->v_GLV , ((ADC_BUF[4] + 400) * 4.5));
 
 }
 
@@ -145,7 +184,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-	extern DMA_HandleTypeDef hdma_usart3_rx;
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -171,31 +209,23 @@ int main(void)
 	EE_Init();
 
 	DWT_Delay_Init();
-	HAL_ADC_Start_IT(&hadc1);
 
-	USART_DMA_Init(&huart3, &hdma_usart3_rx);
+	HAL_ADC_Start_DMA(&hadc1, ADC_BUF, 5);
 
 	BMS = (BMS_struct*) calloc(1, sizeof(BMS_struct));
 	BMS_init(BMS);
 
-
-
-	//LTC_balance_test(BMS->config, BMS->sensor[0]);
-
-
-//		for (int i = 0; i < N_OF_PACKS; ++i) {
-//			LTC_balance_test(BMS->config, BMS->sensor[i]);
-//		}
-
-
+	//		for (int i = 0; i < N_OF_PACKS; ++i) {
+	//			LTC_balance_test(BMS->config, BMS->sensor[i]);
+	//		}
 
 	HAL_TIM_Base_Start_IT(&htim3);
 	HAL_TIM_Base_Start_IT(&htim4);
 
-	//	HAL_UART_Init(&huart3);
-	//	HAL_UART_Receive_DMA(&huart3, UART_RX, 256);
-	//	huart3.gState = HAL_UART_STATE_READY;
-	//	huart3.RxState = HAL_UART_STATE_READY;
+
+	HAL_UART_Receive_DMA(&huart3, UART_RX, 8);
+	huart3.gState = HAL_UART_STATE_READY;
+	huart3.RxState = HAL_UART_STATE_READY;
 
 	NexPageShow(1);
 
@@ -206,13 +236,13 @@ int main(void)
 
 	while (1)
 	{
-
 		BMS_monitoring(BMS);
 		BMS_error(BMS);
 		BMS_can(BMS);
 		nexLoop(BMS);
-
-		DWT_Delay_us(10000);
+		//NexNumberSetValue(0, 0);
+		//HAL_Delay(100);
+		//DWT_Delay_us(10000);
 
   /* USER CODE END WHILE */
 

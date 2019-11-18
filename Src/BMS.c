@@ -29,19 +29,6 @@ static int8_t UV_retries, OV_retries, OT_retries;
 
 
 static const uint16_t CAN_ID_TABLE[8][5] = {
-		{
-				250,		//PACK 0 V_GROUP 0 		(cells 0, 1, 2, 3)
-				251,		//PACK 0 V_GROUP 1		(cells 4, 5, 6, 7)
-				252,		//PACK 0 V_GROUP 2      (cells 8, 9, 10, 11)
-				253,		//PACK 0 T_GROUP        (sensor 0, 1, 2, 3)
-		},
-
-		{
-				255,		//PACK 1 V_GROUP 0 		(cells 0, 1, 2, 3)
-				256,		//PACK 1 V_GROUP 1		(cells 4, 5, 6, 7)
-				257,		//PACK 1 V_GROUP 2      (cells 8, 9, 10, 11)
-				258,		//PACK 1 T_GROUP        (sensor 0, 1, 2, 3)
-		},
 
 		{
 				260,		//PACK 2 V_GROUP 0 		(cells 0, 1, 2, 3)
@@ -66,6 +53,19 @@ static const uint16_t CAN_ID_TABLE[8][5] = {
 				276,		//PACK 5 V_GROUP 1      (cells 4, 5, 6, 7)
 				277,		//PACK 5 V_GROUP 2      (cells 8, 9, 10, 11)
 				278,		//PACK 5 T_GROUP        (sensor 0, 1, 2, 3)
+		},
+		{
+				280,		//PACK 0 V_GROUP 0 		(cells 0, 1, 2, 3)
+				281,		//PACK 0 V_GROUP 1		(cells 4, 5, 6, 7)
+				282,		//PACK 0 V_GROUP 2      (cells 8, 9, 10, 11)
+				283,		//PACK 0 T_GROUP        (sensor 0, 1, 2, 3)
+		},
+
+		{
+				285,		//PACK 1 V_GROUP 0 		(cells 0, 1, 2, 3)
+				286,		//PACK 1 V_GROUP 1		(cells 4, 5, 6, 7)
+				287,		//PACK 1 V_GROUP 2      (cells 8, 9, 10, 11)
+				288,		//PACK 1 T_GROUP        (sensor 0, 1, 2, 3)
 		},
 		{
 				51,		//CHARGING CURRENT (bytes 0, 1, 2, 3) AND DISCHARGING CURRENT(bytes 4, 5, 6, 7)
@@ -104,7 +104,28 @@ void BMS_init(BMS_struct *BMS){
 
 	BMS->mode = 0;
 
+
+	uint16_t aux;
+	EE_ReadVariable(0x0, &aux);
+	BMS->charge = ((uint32_t)aux) << 16; 	//load upper bytes
+	EE_ReadVariable(0x1, &aux);
+	BMS->charge += aux;		//load lower bytes
+
+	EE_ReadVariable(0x2, &aux);
+	BMS->charge_min = ((uint32_t)aux) << 16; 	//load upper bytes
+	EE_ReadVariable(0x3, &aux);
+	BMS->charge_min += aux;		//load lower bytes
+
+	EE_ReadVariable(0x4, &aux);
+	BMS->charge_max = ((uint32_t)aux) << 16; 	//load upper bytes
+	EE_ReadVariable(0x5, &aux);
+	BMS->charge_max += aux;		//load lower bytes
+
+
 	LTC_init(BMS->config);
+
+
+
 
 	//	LTC_set_thermistor_zeros();
 	//
@@ -130,9 +151,16 @@ void BMS_monitoring(BMS_struct *BMS){
 	BMS->v_min = BMS->sensor[0]->V_MIN;
 	BMS->v_max = BMS->sensor[0]->V_MAX;
 	BMS->v_TS = 0;
+	BMS->t_max = 0;
 
 	BMS->v_min = 50000;
 	BMS->v_max = 0;
+
+	BMS->config->command->NAME = LTC_COMMAND_CLRAUX;
+	BMS->config->command->BROADCAST = TRUE;
+	LTC_send_command(BMS->config);
+
+	HAL_Delay(10);
 
 	BMS->config->command->NAME = LTC_COMMAND_ADCV;
 	BMS->config->command->BROADCAST = TRUE;
@@ -165,14 +193,48 @@ void BMS_monitoring(BMS_struct *BMS){
 
 		BMS->v_TS += BMS->sensor[i]->SOC;
 
-//		if(BMS->mode == 1)
-//			LTC_balance(BMS->config, BMS->sensor[i]);
+		for(uint8_t j = 0; j < 4; j++){
+			if(BMS->sensor[i]->GxV[j] > BMS->t_max)
+				BMS->t_max = BMS->sensor[i]->GxV[j];
+		}
+
+		if (BMS->mode & BMS_BALANCING)
+			LTC_balance(BMS->config, BMS->sensor[i]);
 
 	}
 
 	BMS->v_TS /= N_OF_PACKS/2;
 
+		//´[[[[=[+
+	]BMS->charge = -7128000;
+//		BMS->charge_min = - BMS->charge_min - BMS->charge_min;
+//		BMS->charge_max =  BMS->charge_max - BMS->charge_min;
 
+//		int aux1 = 0, aux2 = 0;
+
+//		aux1 = BMS->charge - BMS->charge_min;
+//		aux2 = BMS->charge_max - BMS->charge_min;
+//
+//		BMS->charge_percent = (aux1 * 100)/aux2;
+
+	if(BMS->charge < BMS->charge_min)
+		BMS->charge_min = BMS->charge;
+	if(BMS->charge > BMS->charge_max)
+		BMS->charge_max = BMS->charge;
+
+
+
+	//BMS->charge_percent = (((float)((BMS->charge - BMS->charge_min)) * 100)/(BMS->charge_max - BMS->charge_min));
+	BMS->charge_percent = (uint16_t)(((float)(77760 + (float)(BMS->charge/100)))/(77.76));
+
+	EE_WriteVariable(0x0, (uint16_t) (BMS->charge >> 16));
+	EE_WriteVariable(0x1, (uint16_t) BMS->charge);
+
+	EE_WriteVariable(0x2, (uint16_t) (BMS->charge_min >> 16));
+	EE_WriteVariable(0x3, (uint16_t) BMS->charge_min);
+
+	EE_WriteVariable(0x4, (uint16_t) (BMS->charge_max >> 16));
+	EE_WriteVariable(0x5, (uint16_t) BMS->charge_max);
 
 	//	if (BMS->error_flag != ERR_NO_ERROR) {
 	//		LTC_convert_fuses();
@@ -208,12 +270,12 @@ void BMS_monitoring(BMS_struct *BMS){
 //}
 //
 //int BMS_charging(BMS_struct BMS){
-//	//EM CONSTRUÇÃO...
+//	//EM CONSTRUï¿½ï¿½O...
 //	return 0;
 //}
 //
 //int BMS_discharging(BMS_struct BMS){
-//	//EM CONSTRUÇÃO...
+//	//EM CONSTRUï¿½ï¿½O...
 //	return 0;
 //}
 //
@@ -223,12 +285,12 @@ void BMS_monitoring(BMS_struct *BMS){
 //			LTC6804_balance(BMS->sensor[i]);
 //		}
 //	}
-//	//EM CONSTRUÇÃO...
+//	//EM CONSTRUï¿½ï¿½O...
 //	return 0;
 //}
 //
 //int BMS_communication(BMS_struct *BMS){
-//	//EM CONSTRUÇÃO...
+//	//EM CONSTRUï¿½ï¿½O...
 //
 //
 //	//UART_print("\n\n%d\n\n", BMS->charge);
@@ -359,18 +421,11 @@ void BMS_error(BMS_struct *BMS){
 	}
 
 
-	HAL_GPIO_WritePin(AIR_ENABLE_GPIO_Port, AIR_ENABLE_Pin, SET);
 
 	if(BMS->error != ERR_NO_ERROR){
-		//		if(BMS->opperation_mode == OPP_CHARGING){
-		//			HAL_GPIO_WritePin(CHARGE_ENABLE_GPIO_Port, CHARGE_ENABLE_Pin, RESET);
-		//		}
-		//		else{
 		HAL_GPIO_WritePin(AIR_ENABLE_GPIO_Port, AIR_ENABLE_Pin, RESET);
-		//if (BMS_AIR_status(BMS) ==  AIR_CLOSED){
-		//BMS->error = ERR_AIR_ERROR;
-		//			}
-		//}
+
+
 
 		//Envia por can pro ECU e espera ele desligar os motores;
 		//abre air}
@@ -399,118 +454,116 @@ void BMS_can(BMS_struct *BMS){
 	for(uint8_t i = 0; i < N_OF_PACKS; i++){
 		//if (BMS->sensor[i]->status == STAT_OPPERATING) {
 		for (uint8_t j = 0; j < 3; j++) {
-			can_buf(can_buffer, BMS->sensor[i]->CxV[j + 0],
-					BMS->sensor[i]->CxV[j + 1],
-					BMS->sensor[i]->CxV[j + 2],
-					BMS->sensor[i]->CxV[j + 3]);
+
+			can_buffer[0] = BMS->sensor[i]->CxV[4 * j + 0];
+			can_buffer[1] = BMS->sensor[i]->CxV[4 * j + 0] >> 8;
+			can_buffer[2] = BMS->sensor[i]->CxV[4 * j + 1];
+			can_buffer[3] = BMS->sensor[i]->CxV[4 * j + 1] >> 8;
+			can_buffer[4] = BMS->sensor[i]->CxV[4 * j + 2];
+			can_buffer[5] = BMS->sensor[i]->CxV[4 * j + 2] >> 8;
+			can_buffer[6] = BMS->sensor[i]->CxV[4 * j + 3];
+			can_buffer[7] = BMS->sensor[i]->CxV[4 * j + 3] >> 8;
 
 			CAN_Transmit(can_buffer, CAN_ID_TABLE[i][j]);
 
-			sendString(CAN_ID_TABLE[i][j], 	BMS->sensor[i]->CxV[(j * 4)],
-					BMS->sensor[i]->CxV[(j * 4) +1],
-					BMS->sensor[i]->CxV[(j * 4) +2],
-					BMS->sensor[i]->CxV[(j * 4) +3]);
+			//			sendString(CAN_ID_TABLE[i][j], 	BMS->sensor[i]->CxV[(j * 4)],
+			//					BMS->sensor[i]->CxV[(j * 4) +1],
+			//					BMS->sensor[i]->CxV[(j * 4) +2],
+			//					BMS->sensor[i]->CxV[(j * 4) +3]);
 
 		}
 
-		//			can_buffer[0] = BMS->sensor[i]->t_cell[0];
-		//			can_buffer[1] = BMS->sensor[i]->t_cell[0] >> 8;
-		//			can_buffer[2] = BMS->sensor[i]->t_cell[1];
-		//			can_buffer[3] = BMS->sensor[i]->t_cell[1] >> 8;
-		//			can_buffer[4] = BMS->sensor[i]->t_cell[2];
-		//			can_buffer[5] = BMS->sensor[i]->t_cell[2] >> 8;
-		//			can_buffer[6] = BMS->sensor[i]->t_cell[3];
-		//			can_buffer[7] = BMS->sensor[i]->t_cell[3] >> 8;
-		//
-		//			CAN_Transmit(can_buffer, CAN_ID_TABLE[i][CAN_TEMPERATURE_ID]);
+		can_buffer[0] = BMS->sensor[i]->GxV[0];
+		can_buffer[1] = BMS->sensor[i]->GxV[0] >> 8;
+		can_buffer[2] = BMS->sensor[i]->GxV[1];
+		can_buffer[3] = BMS->sensor[i]->GxV[1] >> 8;
+		can_buffer[4] = BMS->sensor[i]->GxV[2];
+		can_buffer[5] = BMS->sensor[i]->GxV[2] >> 8;
+		can_buffer[6] = BMS->sensor[i]->GxV[3];
+		can_buffer[7] = BMS->sensor[i]->GxV[3] >> 8;
 
-		//			sendString(CAN_ID_TABLE[i][CAN_TEMPERATURE_ID],
-		//					   BMS->sensor[i]->t_cell[0],
-		//					   BMS->sensor[i]->t_cell[1],
-		//					   BMS->sensor[i]->t_cell[2],
-		//					   BMS->sensor[i]->t_cell[3]);
 
-		//		can_buf(can_buffer, 0,
-		//							0,
-		//							BMS->sensor[i]->status | (BMS->sensor[i]->status << 8),
-		//							0)
-		//
-		//		CAN_Transmit(can_buffer, CAN_ID_TABLE[i][CAN_ERROR_FLAG_ID]);
-		//
-		//		sendString(CAN_ID_TABLE[i][CAN_ERROR_FLAG_ID],
-		//				BMS->sensor[i]->status,
-		//				BMS->sensor[i]->address,
-		//				0,
-		//				0);
 
-		//}
+		CAN_Transmit(can_buffer, CAN_ID_TABLE[i][CAN_TEMPERATURE_ID]);
+
+		//		sendString(CAN_ID_TABLE[i][CAN_TEMPERATURE_ID],
+		//				BMS->sensor[i]->GxV[0],
+		//				BMS->sensor[i]->GxV[1],
+		//				BMS->sensor[i]->GxV[2],
+		//				BMS->sensor[i]->GxV[3]);
+
 	}
 
-	can_buf(can_buffer, BMS->current[0],
-			BMS->current[1],
-			BMS->current[2],
-			BMS->current[3]);
+	can_buffer[0] = ((int16_t)BMS->current[0]);
+	can_buffer[1] = ((int16_t)BMS->current[0]) >> 8;
+	can_buffer[2] = ((int16_t)BMS->current[1]);
+	can_buffer[3] = ((int16_t)BMS->current[1]) >> 8;
+	can_buffer[4] = ((int16_t)BMS->current[2]);
+	can_buffer[5] = ((int16_t)BMS->current[2]) >> 8;
+	can_buffer[6] = ((int16_t)BMS->current[3]);
+	can_buffer[7] = ((int16_t)BMS->current[3]) >> 8;
 
-	CAN_Transmit(can_buffer, CAN_ID_TABLE[CAN_CURRENT_ID][0]);
+	CAN_Transmit(can_buffer, 51);
+	//	CAN_Transmit(can_buffer, 352);
 
-	sendString(CAN_ID_TABLE[CAN_CURRENT_ID][0],
-			BMS->current[0],
-			BMS->current[1],
-			BMS->current[2],
-			BMS->current[3]);
 
-	uint32_t percent = 10000 - ((BMS->charge + 50000000)/14400);
+
+	//	sendString(CAN_ID_TABLE[CAN_CURRENT_ID][0],
+	//			BMS->current[0],
+	//			BMS->current[1],
+	//			BMS->current[2],
+	//			BMS->current[3]);
 
 	can_buf(can_buffer, BMS->v_GLV,
-			(int16_t)(percent),
+			(uint16_t)BMS->charge_percent,
 			0,
 			BMS->AIR);
 
 	CAN_Transmit(can_buffer, 52);
 
-	sendString(CAN_ID_TABLE[CAN_GENERAL_ID][0],
-			BMS->v_GLV,
-			percent,
-			BMS->AIR,
-			BMS->error);
+	//	sendString(CAN_ID_TABLE[CAN_GENERAL_ID][0],
+	//			BMS->v_GLV,
+	//			(216000 - BMS->charge/100)/2160,
+	//			BMS->AIR,
+	//			BMS->error);
 
 
-	//	can_buffer[0] = c_mean;
-	//	can_buffer[1] = c_mean >> 8;
-	//	can_buffer[2] = v_bank;
-	//	can_buffer[3] = v_bank >> 8;
-	//	can_buffer[4] = t_mean;
-	//	can_buffer[5] = t_mean >> 8;
-	//	can_buffer[6] = t_max;
-	//	can_buffer[7] = t_max >> 8;
+	can_buffer[0] = 0;
+	can_buffer[1] = 0;
+	can_buffer[2] = BMS->v_TS;
+	can_buffer[3] = BMS->v_TS;
+	can_buffer[4] = 0;
+	can_buffer[5] = 0;
+	can_buffer[6] = BMS->t_max;
+	can_buffer[7] = BMS->t_max >> 8;
 
-	CAN_Transmit(can_buffer, CAN_ID_TABLE[CAN_GENERAL_ID][1]);
+	CAN_Transmit(can_buffer, 53);
 
 	//	sendString(CAN_ID_TABLE[CAN_GENERAL_ID][1],
-	//			c_mean,
-	//			v_bank,
-	//			t_mean,
-	//			t_max);
+	//			0,
+	//			BMS->v_TS,
+	//			0,
+	//			BMS->t_max);
 
 	can_buf(can_buffer, BMS->v_min,
 			BMS->v_max,
 			0,
 			0);
 
-	CAN_Transmit(can_buffer, CAN_ID_TABLE[CAN_GENERAL_ID][2]);
+	CAN_Transmit(can_buffer, 54);
+	//
+	//	//sendString(CAN_ID_TABLE[CAN_GENERAL_ID][2], BMS->v_min,0,0,0);
+	//
+	//	can_buf(can_buffer, BMS->AIR,
+	//			0,
+	//			0,
+	//			0);
+	//
+	//	can_buffer[7] = 0;
+	//
+	//	CAN_Transmit(can_buffer, 0);
 
-	sendString(CAN_ID_TABLE[CAN_GENERAL_ID][2], BMS->v_min,0,0,0);
-
-	can_buf(can_buffer, BMS->AIR,
-			0,
-			0,
-			0);
-
-	can_buffer[7] = 0;
-
-	CAN_Transmit(can_buffer, 0);
-
-	sendString(0, BMS->AIR,0,0);
+	//sendString(0, BMS->AIR,0,0);
 
 }
 

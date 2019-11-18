@@ -21,6 +21,7 @@ typedef struct BMS_struct {
 	uint16_t error;
 	uint8_t communication_mode;
 	uint8_t mode;
+	uint8_t discharging;
 	uint8_t opperating_packs;
 	uint8_t status;
 
@@ -32,11 +33,17 @@ typedef struct BMS_struct {
 	uint16_t v_min;  	//of the bank
 	uint16_t v_max; 	//of the bank
 	uint16_t v_delta;   //of the bank
+	uint16_t t_max;		//of the bank
+
 	//CURRENT
 	float current[4];
+	float c_adc[4];
 
 	//CHARGE_PERCENTAGE
 	int32_t charge;
+	float charge_percent;
+	int32_t charge_max;
+	int32_t charge_min;
 
 	//AIR
 	uint8_t AIR;
