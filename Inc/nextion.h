@@ -20,7 +20,11 @@ int NexNumberSetValue(int Number,int value);
 
 int NexNumberGetValue(int Number);
 
+int NexXfloatSetCollor(int Number, int value);
+
 int NexXfloatSetValue(int Number, int value);
+
+int NexWaveformAdd(int id, int channel, int value);
 
 int NexButtonGetText(int Button, char *buffer, int len);
 

@@ -124,8 +124,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef * hadc)
  *
  * @retval None
  */
-int main(void)
-{
+int main(void){
 	/* USER CODE BEGIN 1 */
 
 	/* USER CODE END 1 */
@@ -162,7 +161,7 @@ int main(void)
 
 	DWT_Delay_Init();
 
-	HAL_ADC_Start_DMA(&hadc1, ADC_BUF, 5);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t* )ADC_BUF, 5);
 	USART_DMA_Init(&huart3, &hdma_usart3_rx);
 
 	HAL_TIM_Base_Start_IT(&htim3);

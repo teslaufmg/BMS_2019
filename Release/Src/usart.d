@@ -31,6 +31,7 @@ Src/usart.o: ../Src/usart.c \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/gpio.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/dma.h \
+ C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/dwt_stm32_delay.h \
  C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/defines.h
 
 C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/usart.h:
@@ -96,5 +97,7 @@ C:/Users/hngui/Documents/GitHub/BMS_2019/Drivers/STM32F1xx_HAL_Driver/Inc/stm32f
 C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/gpio.h:
 
 C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/dma.h:
+
+C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/dwt_stm32_delay.h:
 
 C:/Users/hngui/Documents/GitHub/BMS_2019/Inc/defines.h:

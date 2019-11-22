@@ -30,17 +30,16 @@ void uart3MessageReceived(BMS_struct *BMS)
 			break;
 
 		case 51:
+		case 52:
 			BMS->config->ORDER = uart_user_message[1] - 51;
 			break;
 
 		case 53:
 			BMS->mode &= ~BMS_BALANCING;
-			balance_timer = 0;
 			for (int i = 0; i < N_OF_PACKS; ++i) {
 				LTC_reset_balance_flag(BMS->config, BMS->sensor[i]);
 				LTC_balance(BMS->config, BMS->sensor[i]);
 			}
-			BMS->discharging = FALSE;
 			break;
 
 		case 54:
@@ -98,7 +97,7 @@ void nexLoop(BMS_struct *BMS){
 		NexScrollingTextSetPic(0, 10);
 	}
 
-	NexProgressBarSetValue(0, BMS->charge_percent);
+
 
 	uint16_t buffer[N_OF_CELLS];
 
@@ -114,6 +113,7 @@ void nexLoop(BMS_struct *BMS){
 		NexXfloatSetValue(3, BMS->charge_percent);
 		NexXfloatSetValue(4, (uint16_t)tim);
 		NexXfloatSetValue(5, HAL_GPIO_ReadPin(AIR_AUX_MINUS_GPIO_Port, AIR_AUX_MINUS_Pin));
+		NexProgressBarSetValue(0, BMS->charge_percent/10);
 
 		NexPictureSetPic(0, 12 + HAL_GPIO_ReadPin(AIR_AUX_PLUS_GPIO_Port, AIR_AUX_PLUS_Pin));
 		NexPictureSetPic(1, 12 + HAL_GPIO_ReadPin(AIR_AUX_MINUS_GPIO_Port, AIR_AUX_MINUS_Pin));
@@ -135,6 +135,9 @@ void nexLoop(BMS_struct *BMS){
 
 	default:
 		if(actual_page - 1 < N_OF_PACKS ){
+
+			NexProgressBarSetValue(0, BMS->sensor[actual_page - 1]->TOTAL_CHARGE/10);
+
 			for(uint8_t i = 0; i < N_OF_CELLS; i++)
 				buffer[i] = BMS->sensor[actual_page - 1]->CxV[i];
 
@@ -154,7 +157,11 @@ void nexLoop(BMS_struct *BMS){
 			NexXfloatSetValue(13,BMS->sensor[actual_page - 1]->GxV[3]);
 			NexXfloatSetValue(14,BMS->sensor[actual_page - 1]->GxV[2]);
 			NexXfloatSetValue(15,BMS->sensor[actual_page - 1]->GxV[1]);
+
 		}else if(actual_page - N_OF_PACKS - 1 < N_OF_PACKS){
+
+			NexProgressBarSetValue(0, BMS->sensor[actual_page - N_OF_PACKS - 1]->TOTAL_CHARGE/10);
+
 			NexVariableSetValue(1,N_OF_PACKS);
 			NexNumberSetValue(0,actual_page - N_OF_PACKS - 1);
 			NexXfloatSetValue(0, BMS->sensor[actual_page - N_OF_PACKS - 1]->V_MAX);

@@ -235,7 +235,7 @@ void LTC_send_command(LTC_config *config, ...){
 
 	if((config->command->NAME & 0x07FF) == LTC_COMMAND_WRCFG){
 
-		tx_data[0] = (config->ADCOPT) | (config->SWTRD << 1) | (config->REFON << 2) | (config->GPIO << 3) | (config->VUV << 8);
+		tx_data[0] = (config->ADCOPT << 8) | (config->SWTRD << 9) | (config->REFON << 10) | (config->GPIO << 11) | (config->VUV);
 		tx_data[1] = (config->VUV >> 8) | (config->VOV << 4);
 		tx_data[2] |= ((config->DCTO & 0xf) << 4);
 		//		tx_data[2] = (config->DCTO << 12) | (config->DCC);
@@ -326,10 +326,25 @@ void LTC_send_command(LTC_config *config, ...){
 
 		break;
 
+	case LTC_COMMAND_ADCV	:
+	case LTC_COMMAND_ADOW	:
+	case LTC_COMMAND_CVST	:
+	case LTC_COMMAND_ADAX	:
+	case LTC_COMMAND_AXST	:
+	case LTC_COMMAND_ADSTAT	:
+	case LTC_COMMAND_STATST	:
+	case LTC_COMMAND_ADCVAX	:
+
+		config->ADC_READY = FALSE;
+
+		break;
+
 	case LTC_COMMAND_PLADC	:
 
-		//while (transmit_command(command) < 0xFFFF);
-
+		if(rx_data[0] == 0)
+			config->ADC_READY = FALSE;
+		else
+			config->ADC_READY = TRUE;
 		break;
 
 	case LTC_COMMAND_DIAGN	:
@@ -347,21 +362,19 @@ void LTC_send_command(LTC_config *config, ...){
 	default:
 		break;
 	}
-
-	//	HAL_GPIO_WritePin(ISOSPI_CS_GPIO_Port, ISOSPI_CS_Pin, 1);
-	//	HAL_Delay(50);
 }
 
 void LTC_init(LTC_config *config){
 
-	config->GPIO = 0;
+	config->GPIO = 0x1F;
 	config->REFON = 0;
 	config->SWTRD = 0;
 	config->ADCOPT = 0;
-	config->VUV = MAX_CELL_V_CHARGE;
-	config->VOV = MIN_CELL_V;
+	config->VUV = 0;
+	config->VOV = 0;
 	config->DCTO = 0;
-	config->command->MD = MD_NORMAL;
+	config->command->MD = MD_FILTRED;
+	//config->command->DCP = DCP_PERMITED;
 
 	config->command->BROADCAST = TRUE;
 	config->command->NAME = LTC_COMMAND_WRCOMM;
@@ -380,7 +393,7 @@ void LTC_balance_test(LTC_config *config, LTC_sensor *sensor){
 		config->command->NAME = LTC_COMMAND_WRCFG;
 		LTC_send_command(config, sensor);
 		sensor->DCC = sensor->DCC << 1;
-		HAL_Delay(500);
+		DWT_Delay_us(500000);
 
 	}
 
@@ -401,11 +414,25 @@ static void LTC_T_convert(LTC_sensor* sensor){
 	}
 }
 
+void LTC_wait(LTC_config *config, LTC_sensor *sensor){
+
+	do{
+
+		config->command->NAME = LTC_COMMAND_PLADC;
+		config->command->BROADCAST = FALSE;
+		LTC_send_command(config, sensor);
+
+	}while(!config->ADC_READY);
+
+}
+
 void LTC_read(uint8_t LTC_READ, LTC_config *config, LTC_sensor *sensor){
 
 	config->command->BROADCAST = FALSE;
 
 	if (LTC_READ&LTC_READ_CELL) {
+
+		LTC_wait(config, sensor);
 
 		config->command->NAME = LTC_COMMAND_RDCVA;
 		LTC_send_command(config, sensor);
@@ -418,29 +445,29 @@ void LTC_read(uint8_t LTC_READ, LTC_config *config, LTC_sensor *sensor){
 
 
 
-//				if(sensor->ADDR == 5){
-//					sensor->CxV[1] = (sensor->CxV[1] + sensor->CxV[2])/2;
-//					sensor->CxV[2] = sensor->CxV[1];
-//				}
+						if(sensor->ADDR == 1){
+							sensor->CxV[1] = 33000;
+							sensor->CxV[4] = 33000;
+						}
 
-		if(sensor->DCC == 0x00){
+		LTC_SOC(config, sensor);
 
-			sensor->V_MIN = 36000;
-			sensor->V_MAX = 28000;
+		sensor->V_MIN = 36000;
+		sensor->V_MAX = 28000;
 
-			for(uint8_t i = 0; i < N_OF_CELLS; i++){
-				if(sensor->CxV[i] < sensor->V_MIN)
-					sensor->V_MIN = sensor->CxV[i];
-				if(sensor->CxV[i] > sensor->V_MAX)
-					sensor->V_MAX = sensor->CxV[i];
-			}
-
-			sensor->V_DELTA = sensor->V_MAX - sensor->V_MIN;
-
+		for(uint8_t i = 0; i < N_OF_CELLS; i++){
+			if(sensor->CxV[i] < sensor->V_MIN)
+				sensor->V_MIN = sensor->CxV[i];
+			if(sensor->CxV[i] > sensor->V_MAX)
+				sensor->V_MAX = sensor->CxV[i];
 		}
+
+		sensor->V_DELTA = sensor->V_MAX - sensor->V_MIN;
 
 	}
 	if (LTC_READ&LTC_READ_GPIO) {
+
+		LTC_wait(config, sensor);
 
 		config->command->NAME = LTC_COMMAND_RDAUXA;
 		LTC_send_command(config, sensor);
@@ -454,6 +481,8 @@ void LTC_read(uint8_t LTC_READ, LTC_config *config, LTC_sensor *sensor){
 	}
 	if (LTC_READ&LTC_READ_STATUS) {
 
+		LTC_wait(config, sensor);
+
 		config->command->NAME = LTC_COMMAND_RDSTATA;
 		LTC_send_command(config, sensor);
 		config->command->NAME = LTC_COMMAND_RDSTATB;
@@ -461,6 +490,8 @@ void LTC_read(uint8_t LTC_READ, LTC_config *config, LTC_sensor *sensor){
 
 	}
 	if (LTC_READ&LTC_READ_CONFIG){
+
+		LTC_wait(config, sensor);
 
 		config->command->NAME = LTC_COMMAND_RDCFG;
 		LTC_send_command(config, sensor);
@@ -495,51 +526,61 @@ void LTC_reset_balance_flag(LTC_config *config, LTC_sensor *sensor){
 
 void LTC_balance(LTC_config *config, LTC_sensor *sensor){
 
-
 	config->command->BROADCAST = FALSE;
 	config->command->NAME = LTC_COMMAND_WRCFG;
 	LTC_send_command(config, sensor);
 
 }
 
-//void LTC_balance_test(LTC_config *config, LTC_sensor *sensor){
-//
-//	uint16_t cell_balance[12], cell_not_balance[12];
-//	config->command->DCP = DCP_NOT_PERMITED;
-//	config->command->MD = MD_FILTRED;
-//	config->command->CH = CH_ALL;
-//	LTC_read(LTC_READ_CELL, config, sensor);
-//	for(uint8_t i = 0; i<12; i++)
-//		cell_not_balance[i] = sensor->CxV[i];
-//
-//	for(uint8_t i=0 ;i<6; i++){
-//		config->DCC[i] = 1;
-//		config->DCC[i+6] = 1;
-//		config->command->BROADCAST = FALSE;
-//		config->command->NAME = LTC_COMMAND_WRCFG;
-//		LTC_send_command(config, sensor);
-//
-//		config->command->CH = i+1;
-//		LTC_read(LTC_READ_CELL, config, sensor);
-//
-//
-//	}
-//}
+uint16_t SOC_LOOKUP[11] = {
+		28594,
+		31845,
+		32220,
+		32490,
+		32705,
+		32831,
+		32907,
+		32999,
+		33149,
+		33272,
+		33865
+};
 
-void LTC_balance_rubber(LTC_config *config, LTC_sensor *sensor){
 
-	uint16_t volt_old[12], volt_now[12];
-	config->command->DCP = DCP_NOT_PERMITED;
-	config->command->MD = MD_FILTRED;
-	config->command->CH = CH_ALL;
-	LTC_read(LTC_READ_CELL, config, sensor);
-	for(uint8_t i = 0; i<12; i++){
-		volt_old[i] = sensor->CxV[i];
+void LTC_SOC(LTC_config *config, LTC_sensor *sensor){
+
+	uint8_t j;
+
+	for(uint8_t i = 0; i < N_OF_CELLS; i++){
+		for(j = 0; j < 10; j++){
+
+			if(sensor->CxV[i] > SOC_LOOKUP[10]){
+				sensor->CxV[i] = 100;
+				break;
+			}
+			if(sensor->CxV[i] < SOC_LOOKUP[0]){
+				sensor->CxV[i] = 0;
+				break;
+			}
+			if(sensor->CxV[i] < SOC_LOOKUP[j]){
+				sensor->CHARGE[i] = (j - 1)*100 + ((float)100/(SOC_LOOKUP[j] - SOC_LOOKUP[j - 1])) * (sensor->CxV[i] - SOC_LOOKUP[j - 1]);
+				break;
+			}
+
+		}
+
+		sensor->CHARGE[i] = (j - 1)*100 + ((float)100/(SOC_LOOKUP[j] - SOC_LOOKUP[j - 1])) * (sensor->CxV[i] - SOC_LOOKUP[j - 1]);
+
+		sensor->TOTAL_CHARGE += sensor->CHARGE[i];
 	}
-	config->command->BROADCAST = FALSE;
-	config->command->NAME = LTC_COMMAND_WRCFG;
+
+	sensor->TOTAL_CHARGE /= N_OF_CELLS;
+	if(sensor->TOTAL_CHARGE >= 1000){
+		sensor->TOTAL_CHARGE = 999;
+	}
 
 }
+
 
 void LTC_open_wire(uint8_t LTC_READ, LTC_config *config, LTC_sensor *sensor){
 

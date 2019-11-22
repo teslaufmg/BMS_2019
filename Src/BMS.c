@@ -145,6 +145,75 @@ void BMS_init(BMS_struct *BMS){
 	//	BMS->charge += aux;		//load lower bytes
 
 }
+
+#define BMS_CONVERT_CELL 	1
+#define BMS_CONVERT_GPIO	2
+#define BMS_CONVERT_STAT	4
+#define BMS_CONVERT_CONFIG	8
+
+void BMS_convert(uint8_t BMS_CONVERT, BMS_struct *BMS){
+
+	if (BMS_CONVERT&BMS_CONVERT_CELL) {
+
+		BMS->config->command->NAME = LTC_COMMAND_ADCV;
+		BMS->config->command->BROADCAST = TRUE;
+		LTC_send_command(BMS->config);
+
+		for(uint8_t i = 0; i < N_OF_PACKS; i++){
+
+			LTC_read(LTC_READ_CELL, BMS->config, BMS->sensor[i]);
+
+			if(BMS->sensor[i]->V_MIN < BMS->v_min)
+				BMS->v_min = BMS->sensor[i]->V_MIN;
+			if(BMS->sensor[i]->V_MAX > BMS->v_max)
+				BMS->v_max = BMS->sensor[i]->V_MAX;
+
+			BMS->v_TS += BMS->sensor[i]->SOC;
+
+			for(uint8_t j = 0; j < 4; j++){
+				if(BMS->sensor[i]->GxV[j] > BMS->t_max)
+					BMS->t_max = BMS->sensor[i]->GxV[j];
+			}
+		}
+
+	}
+	if (BMS_CONVERT&BMS_CONVERT_GPIO) {
+
+		BMS->config->command->NAME = LTC_COMMAND_ADAX;
+		BMS->config->command->BROADCAST = TRUE;
+		LTC_send_command(BMS->config);
+
+		for(uint8_t i = 0; i < N_OF_PACKS; i++){
+
+			LTC_read(LTC_READ_GPIO, BMS->config, BMS->sensor[i]);
+
+			for(uint8_t j = 0; j < 4; j++){
+
+				if(BMS->sensor[i]->GxV[j] > BMS->t_max)
+					BMS->t_max = BMS->sensor[i]->GxV[j];
+
+			}
+		}
+
+	}
+	if (BMS_CONVERT&BMS_CONVERT_STAT) {
+
+		BMS->config->command->NAME = LTC_COMMAND_ADSTAT;
+		BMS->config->command->BROADCAST = TRUE;
+		LTC_send_command(BMS->config);
+
+		for(uint8_t i = 0; i < N_OF_PACKS; i++){
+
+			LTC_read(LTC_READ_STATUS, BMS->config, BMS->sensor[i]);
+
+			BMS->v_TS += BMS->sensor[i]->SOC;
+		}
+
+		BMS->v_TS /= N_OF_PACKS/2;
+
+	}
+}
+
 void BMS_monitoring(BMS_struct *BMS){
 
 
@@ -156,66 +225,25 @@ void BMS_monitoring(BMS_struct *BMS){
 	BMS->v_min = 50000;
 	BMS->v_max = 0;
 
-	BMS->config->command->NAME = LTC_COMMAND_CLRAUX;
-	BMS->config->command->BROADCAST = TRUE;
-	LTC_send_command(BMS->config);
+	BMS->charge_percent = 0;
 
-	HAL_Delay(10);
+	BMS_convert(BMS_CONVERT_CELL|BMS_CONVERT_GPIO|BMS_CONVERT_STAT, BMS);
 
-	BMS->config->command->NAME = LTC_COMMAND_ADCV;
-	BMS->config->command->BROADCAST = TRUE;
-	LTC_send_command(BMS->config);
-
-	HAL_Delay(10);
-
-	BMS->config->command->NAME = LTC_COMMAND_ADAX;
-	BMS->config->command->BROADCAST = TRUE;
-	LTC_send_command(BMS->config);
-
-	HAL_Delay(10);
-
-	BMS->config->command->NAME = LTC_COMMAND_ADSTAT;
-	BMS->config->command->BROADCAST = TRUE;
-	LTC_send_command(BMS->config);
-
-	HAL_Delay(10);
 
 	for(uint8_t i = 0; i < N_OF_PACKS; i++){
-
-		LTC_read(LTC_READ_CELL | LTC_READ_STATUS | LTC_READ_STATUS | LTC_READ_GPIO, BMS->config, BMS->sensor[i]);
-
-		HAL_Delay(100);
-
-		if(BMS->sensor[i]->V_MIN < BMS->v_min)
-			BMS->v_min = BMS->sensor[i]->V_MIN;
-		if(BMS->sensor[i]->V_MAX > BMS->v_max)
-			BMS->v_max = BMS->sensor[i]->V_MAX;
-
-		BMS->v_TS += BMS->sensor[i]->SOC;
-
-		for(uint8_t j = 0; j < 4; j++){
-			if(BMS->sensor[i]->GxV[j] > BMS->t_max)
-				BMS->t_max = BMS->sensor[i]->GxV[j];
-		}
-
 		if (BMS->mode & BMS_BALANCING)
-			LTC_balance(BMS->config, BMS->sensor[i]);
+			LTC_set_balance_flag(BMS->config, BMS->sensor[i]);
+		else
+			LTC_reset_balance_flag(BMS->config, BMS->sensor[i]);
+
+		LTC_balance(BMS->config, BMS->sensor[i]);
+
+		BMS->charge_percent += BMS->sensor[i]->TOTAL_CHARGE;
 
 	}
 
-	BMS->v_TS /= N_OF_PACKS/2;
+	BMS->charge_percent /= N_OF_PACKS;
 
-		//´[[[[=[+
-	]BMS->charge = -7128000;
-//		BMS->charge_min = - BMS->charge_min - BMS->charge_min;
-//		BMS->charge_max =  BMS->charge_max - BMS->charge_min;
-
-//		int aux1 = 0, aux2 = 0;
-
-//		aux1 = BMS->charge - BMS->charge_min;
-//		aux2 = BMS->charge_max - BMS->charge_min;
-//
-//		BMS->charge_percent = (aux1 * 100)/aux2;
 
 	if(BMS->charge < BMS->charge_min)
 		BMS->charge_min = BMS->charge;
@@ -223,9 +251,6 @@ void BMS_monitoring(BMS_struct *BMS){
 		BMS->charge_max = BMS->charge;
 
 
-
-	//BMS->charge_percent = (((float)((BMS->charge - BMS->charge_min)) * 100)/(BMS->charge_max - BMS->charge_min));
-	BMS->charge_percent = (uint16_t)(((float)(77760 + (float)(BMS->charge/100)))/(77.76));
 
 	EE_WriteVariable(0x0, (uint16_t) (BMS->charge >> 16));
 	EE_WriteVariable(0x1, (uint16_t) BMS->charge);
@@ -337,6 +362,8 @@ void BMS_error(BMS_struct *BMS){
 		flag |= ERR_OVER_VOLTAGE;
 	else if(BMS->v_max <= 34000)
 		flag &= ~ERR_OVER_VOLTAGE;
+	if(BMS->t_max >= 500)
+		flag |= ERR_OVER_TEMPERATURE;
 
 
 	//	for(int i = 0; i < N_OF_PACKS; i++){
@@ -515,7 +542,7 @@ void BMS_can(BMS_struct *BMS){
 	//			BMS->current[3]);
 
 	can_buf(can_buffer, BMS->v_GLV,
-			(uint16_t)BMS->charge_percent,
+			(uint16_t)(BMS->charge_percent/10),
 			0,
 			BMS->AIR);
 

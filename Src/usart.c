@@ -47,6 +47,7 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include "dwt_stm32_delay.h"
 #include "defines.h"
 
 #define abs(x) ((x)>=0?(x):-(x))
@@ -247,7 +248,7 @@ void sendString(int id, ...) {
 
 	int len = sprintf(xbeeBuffer, "%u\t%u\t%u\t%u\t%u\n", id, data_word[0], data_word[1], data_word[2], data_word[3]);
 	HAL_UART_Transmit (&huart1, (uint8_t*)xbeeBuffer, len, 100);
-	HAL_Delay(1);
+	DWT_Delay_us(1000);
 }
 
 

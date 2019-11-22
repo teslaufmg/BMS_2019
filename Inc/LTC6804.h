@@ -13,6 +13,8 @@
 #include "stm32f1xx_hal.h"
 #include <math.h>
 
+
+
 typedef struct LTC_command{
 
 	uint16_t NAME;
@@ -41,11 +43,10 @@ typedef struct LTC_config{
 	uint8_t REFON:1; 	// 1 bit - set the reference configuration
 	uint8_t SWTRD:1;	// 1 bit - set the under voltage limit
 	uint8_t ADCOPT:1;	// 1 bit - set the ADC mode
-	uint16_t VUV; 	// 12 bits - set the under voltage limit
+	uint16_t VUV:12; 	// 12 bits - set the under voltage limit
 	uint16_t VOV; 	// 12 bits - set the over  voltage limit
 	uint8_t DCTO:4; 	// 4 bits - set the duration of discharge
-//	uint8_t DCC:12;  	// 12 bits - set which cell to discharge
-
+	uint8_t ADC_READY;
 
 }LTC_config;
 
@@ -73,6 +74,9 @@ typedef struct LTC_sensor{
 	uint16_t V_MAX;
 	uint16_t V_MIN;
 	uint16_t V_DELTA;
+	uint16_t CHARGE[12];
+	uint16_t TOTAL_CHARGE;
+
 
 }LTC_sensor;
 
@@ -224,6 +228,9 @@ void LTC_balance_test(LTC_config *config, LTC_sensor *sensor);
 void LTC_sort(LTC_sensor *sensor, uint8_t left, uint8_t right);
 void LTC_send_command(LTC_config *config, ...);
 void LTC_read(uint8_t LTC_READ, LTC_config *config, LTC_sensor *sensor);
+void LTC_set_balance_flag(LTC_config *config, LTC_sensor *sensor);
+void LTC_reset_balance_flag(LTC_config *config, LTC_sensor *sensor);
+void LTC_balance(LTC_config *config, LTC_sensor *sensor);
 void LTC_open_wire(uint8_t LTC_READ, LTC_config *config, LTC_sensor *sensor);
 
 

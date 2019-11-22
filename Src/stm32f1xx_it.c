@@ -45,11 +45,8 @@
 extern ADC_HandleTypeDef hadc1;
 extern UART_HandleTypeDef huart3;
 extern BMS_struct *BMS;
-extern int32_t ADC_BUF[5];
-extern uint8_t UART_RX[16];
 
 uint16_t len = 0;
-#define DMA_RX_BUFFER_SIZE 32
 uint8_t DMA_RX_Buffer[DMA_RX_BUFFER_SIZE];	/* Local DMA buffer for circular DMA */
 uint8_t uart_message[DMA_RX_BUFFER_SIZE];
 
@@ -343,7 +340,7 @@ void TIM4_IRQHandler(void)
 
 	if(coulomb_counter_timer >= 10){
 
-		if ((BMS->current[0] + BMS->current[2] + BMS->current[3])/10 > 10 ||(BMS->current[0] + BMS->current[2] + BMS->current[3])/10 < - 10){
+		if ((BMS->current[0] + BMS->current[2] + BMS->current[3]) > 30 ||(BMS->current[0] + BMS->current[2] + BMS->current[3]) < - 30){
 				BMS->charge += (int32_t)(((float)(BMS->current[0] + BMS->current[2] + BMS->current[3])/10));
 		}
 		coulomb_counter_timer = 0;
@@ -351,23 +348,23 @@ void TIM4_IRQHandler(void)
 	coulomb_counter_timer++;
 
 
-
-	if (BMS->mode & BMS_BALANCING) {
-
-		if(balance_timer == 5000){
-			for (int i = 0; i < N_OF_PACKS; ++i) {
-				LTC_set_balance_flag(BMS->config, BMS->sensor[i]);
-			}
-			BMS->discharging = TRUE;
-		}else if(balance_timer >= 60000){
-			for (int i = 0; i < N_OF_PACKS; ++i) {
-				LTC_reset_balance_flag(BMS->config, BMS->sensor[i]);
-			}
-			BMS->discharging = FALSE;
-			balance_timer = 0;
-		}
-		balance_timer++;
-	}
+//
+//	if (BMS->mode & BMS_BALANCING) {
+//
+//		if(balance_timer == 5000){
+//			for (int i = 0; i < N_OF_PACKS; ++i) {
+//				LTC_set_balance_flag(BMS->config, BMS->sensor[i]);
+//			}
+//			BMS->discharging = TRUE;
+//		}else if(balance_timer >= 60000){
+//			for (int i = 0; i < N_OF_PACKS; ++i) {
+//				LTC_reset_balance_flag(BMS->config, BMS->sensor[i]);
+//			}
+//			BMS->discharging = FALSE;
+//			balance_timer = 0;
+//		}
+//		balance_timer++;
+//	}
 
 	/* USER CODE END TIM4_IRQn 1 */
 }
