@@ -173,8 +173,7 @@ int main(void)
 
 	DWT_Delay_us(50000);
 
-	HAL_GPIO_WritePin(CHARGE_ENABLE_GPIO_Port, CHARGE_ENABLE_Pin, 1//////////////////////////////
-			]/);
+	HAL_GPIO_WritePin(CHARGE_ENABLE_GPIO_Port, CHARGE_ENABLE_Pin, 1);
 
 	NexPageShow(1);
 
