@@ -224,6 +224,9 @@ void CAN_Transmit(uint8_t *vet, uint32_t id){
 	{
 		//Error_Handler();
 	}
+
+	DWT_Delay_us(7000);
+
 }
 
 /**

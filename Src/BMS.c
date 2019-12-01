@@ -77,12 +77,34 @@ static const uint16_t CAN_ID_TABLE[8][5] = {
 		},
 };
 
-//extern uint8_t c_zero_flag;
+#define BMS_CONVERT_CELL 	1
+#define BMS_CONVERT_GPIO	2
+#define BMS_CONVERT_STAT	4
+#define BMS_CONVERT_CONFIG	8
+
+ int16_t THERMISTOR_ZEROS[N_OF_PACKS][5];
+
+void BMS_set_thermistor_zeros(BMS_struct *BMS){
+	uint32_t mean = 0;
+
+	for (int i = 0; i < N_OF_PACKS; i++)
+		for (int j = 0; j < 5; ++j)
+			THERMISTOR_ZEROS[i][j] = 0;
+
+	BMS_convert(BMS_CONVERT_GPIO, BMS);
+
+	for (int i = 0; i < N_OF_PACKS; i++)
+		for (int j = 0; j < 5; ++j)
+			mean += BMS->sensor[i]->GxV[j];
+
+	mean = (uint32_t)((float)mean/(N_OF_PACKS*5));
+
+	for (int i = 0; i < N_OF_PACKS; i++)
+		for (int j = 0; j < 5; ++j)
+			THERMISTOR_ZEROS[i][j] = mean - BMS->sensor[i]->GxV[j];
+}
 
 void BMS_init(BMS_struct *BMS){
-
-
-	//comm_time = HAL_GetTick();
 
 	CAN_Config_Filter();
 	CAN_Config_Frames();
@@ -98,7 +120,6 @@ void BMS_init(BMS_struct *BMS){
 	}
 
 	BMS->error = ERR_NO_ERROR;
-	//BMS->opperating_packs = 0;
 	BMS->v_min = 50000;
 	BMS->v_max = 0;
 
@@ -121,35 +142,13 @@ void BMS_init(BMS_struct *BMS){
 	EE_ReadVariable(0x5, &aux);
 	BMS->charge_max += aux;		//load lower bytes
 
-
 	LTC_init(BMS->config);
 
-
-
-
-	//	LTC_set_thermistor_zeros();
-	//
-	//	c_zero_flag = 1;
-
-	//	if(BMS->opperation_mode == OPP_CHARGING)
-	//		HAL_GPIO_WritePin(CHARGE_ENABLE_GPIO_Port, CHARGE_ENABLE_Pin, SET);
-
-
-	//	EE_WriteVariable(0x0, (uint16_t) 0);
-	//	EE_WriteVariable(0x1, (uint16_t) 0);
-	//
-	//	uint16_t aux;
-	//	EE_ReadVariable(0x0, &aux);
-	//	BMS->charge = ((uint32_t)aux) << 16; 	//load upper bytes
-	//	EE_ReadVariable(0x1, &aux);
-	//	BMS->charge += aux;		//load lower bytes
+	BMS_set_thermistor_zeros(BMS);
 
 }
 
-#define BMS_CONVERT_CELL 	1
-#define BMS_CONVERT_GPIO	2
-#define BMS_CONVERT_STAT	4
-#define BMS_CONVERT_CONFIG	8
+
 
 void BMS_convert(uint8_t BMS_CONVERT, BMS_struct *BMS){
 
@@ -356,12 +355,12 @@ void BMS_error(BMS_struct *BMS){
 
 	if(BMS->v_min <= 28000)
 		flag |= ERR_UNDER_VOLTAGE;
-	else if(BMS->v_min >= 30000)
-		flag &= ~ERR_UNDER_VOLTAGE;
+//	else if(BMS->v_min >= 30000)
+//		flag &= ~ERR_UNDER_VOLTAGE;
 	if(BMS->v_max >= 36000)
 		flag |= ERR_OVER_VOLTAGE;
-	else if(BMS->v_max <= 34000)
-		flag &= ~ERR_OVER_VOLTAGE;
+//	else if(BMS->v_max <= 34000)
+//		flag &= ~ERR_OVER_VOLTAGE;
 	if(BMS->t_max >= 500)
 		flag |= ERR_OVER_TEMPERATURE;
 
@@ -381,25 +380,26 @@ void BMS_error(BMS_struct *BMS){
 	if((flag & ERR_UNDER_VOLTAGE) == ERR_UNDER_VOLTAGE)
 		UV_retries++;
 	else
-		UV_retries--;
+		UV_retries = 0;
 	if((flag & ERR_OVER_VOLTAGE) == ERR_OVER_VOLTAGE)
 		OV_retries++;
 	else
-		OV_retries--;
+		OV_retries = 0;
+
 	if((flag & ERR_OVER_TEMPERATURE) == ERR_OVER_TEMPERATURE)
 		OT_retries++;
 	else
-		OT_retries--;
+		OT_retries = 0;
 
-	if(UV_retries > 5) UV_retries = 5;
-	if(OV_retries > 5) OV_retries = 5;
-	if(OT_retries > 5) OT_retries = 5;
+	if(UV_retries > 20) UV_retries = 20;
+	if(OV_retries > 20) OV_retries = 20;
+	if(OT_retries > 20) OT_retries = 20;
 	if(UV_retries < 0) UV_retries = 0;
 	if(OV_retries < 0) OV_retries = 0;
 	if(OT_retries < 0) OT_retries = 0;
 
 
-	if(UV_retries == 5){
+	if(UV_retries == 20){
 		NextError[0] = 1;
 		BMS->error |= ERR_UNDER_VOLTAGE;
 	}
@@ -407,7 +407,7 @@ void BMS_error(BMS_struct *BMS){
 		NextError[0] = 0;
 		BMS->error &= ~ERR_UNDER_VOLTAGE;
 	}
-	if(OV_retries == 5){
+	if(OV_retries == 20){
 		NextError[1] = 1;
 		BMS->error |= ERR_OVER_VOLTAGE;
 	}
@@ -443,22 +443,21 @@ void BMS_error(BMS_struct *BMS){
 
 
 	if(BMS->v_GLV < 13500){
-		//BMS->error |= ERR_GLV_VOLTAGE;
+		BMS->error |= ERR_GLV_VOLTAGE;
 		NextError[4] = 1;
+	}else if(BMS->v_GLV < 13500){
+		BMS->error &= ~ERR_GLV_VOLTAGE;
+		NextError[4] = 0;
 	}
 
 
 
 	if(BMS->error != ERR_NO_ERROR){
 		HAL_GPIO_WritePin(AIR_ENABLE_GPIO_Port, AIR_ENABLE_Pin, RESET);
-
-
-
-		//Envia por can pro ECU e espera ele desligar os motores;
-		//abre air}
-
+		HAL_GPIO_WritePin(ERR_LED_GPIO_Port, ERR_LED_Pin, SET);
 	}else{
 		HAL_GPIO_WritePin(AIR_ENABLE_GPIO_Port, AIR_ENABLE_Pin, SET);
+		HAL_GPIO_WritePin(ERR_LED_GPIO_Port, ERR_LED_Pin, RESET);
 	}
 }
 

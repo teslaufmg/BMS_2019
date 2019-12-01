@@ -382,6 +382,8 @@ void LTC_init(LTC_config *config){
 
 }
 
+
+
 void LTC_balance_test(LTC_config *config, LTC_sensor *sensor){
 
 	//TODO implement software balance check
@@ -402,6 +404,8 @@ void LTC_balance_test(LTC_config *config, LTC_sensor *sensor){
 
 }
 
+extern int16_t THERMISTOR_ZEROS[N_OF_PACKS][5];
+
 static void LTC_T_convert(LTC_sensor* sensor){
 	float t0, B, r, r0;
 	t0 = 25 + 273;
@@ -411,6 +415,7 @@ static void LTC_T_convert(LTC_sensor* sensor){
 	for (int i = 0; i < 5; ++i) {
 		r = (float)(sensor->GxV[i]*10000) / (float)(sensor->REF - sensor->GxV[i]);
 		sensor->GxV[i] = ((t0 * B) / (t0 * log( r / r0) + B) - 273)*10;
+		sensor->GxV[i] += THERMISTOR_ZEROS[sensor->ADDR][i];
 	}
 }
 
@@ -425,6 +430,7 @@ void LTC_wait(LTC_config *config, LTC_sensor *sensor){
 	}while(!config->ADC_READY);
 
 }
+
 
 void LTC_read(uint8_t LTC_READ, LTC_config *config, LTC_sensor *sensor){
 
@@ -445,12 +451,13 @@ void LTC_read(uint8_t LTC_READ, LTC_config *config, LTC_sensor *sensor){
 
 
 
-						if(sensor->ADDR == 1){
-							sensor->CxV[1] = 33000;
-							sensor->CxV[4] = 33000;
-						}
+//					if(sensor->ADDR == 1){
+//							sensor->CxV[1] = 33000;
+//							sensor->CxV[4] = 33000;
+//						}
 
 		LTC_SOC(config, sensor);
+
 
 		sensor->V_MIN = 36000;
 		sensor->V_MAX = 28000;

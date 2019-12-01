@@ -47,6 +47,7 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include "dwt_stm32_delay.h"
 #include "defines.h"
 
 #define abs(x) ((x)>=0?(x):-(x))
@@ -150,7 +151,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     hdma_usart3_rx.Init.MemInc = DMA_MINC_ENABLE;
     hdma_usart3_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
     hdma_usart3_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-    hdma_usart3_rx.Init.Mode = DMA_NORMAL;
+    hdma_usart3_rx.Init.Mode = DMA_CIRCULAR;
     hdma_usart3_rx.Init.Priority = DMA_PRIORITY_LOW;
     if (HAL_DMA_Init(&hdma_usart3_rx) != HAL_OK)
     {
@@ -247,7 +248,7 @@ void sendString(int id, ...) {
 
 	int len = sprintf(xbeeBuffer, "%u\t%u\t%u\t%u\t%u\n", id, data_word[0], data_word[1], data_word[2], data_word[3]);
 	HAL_UART_Transmit (&huart1, (uint8_t*)xbeeBuffer, len, 100);
-	HAL_Delay(1);
+	DWT_Delay_us(1000);
 }
 
 

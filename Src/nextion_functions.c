@@ -66,8 +66,6 @@ int cmpfunc (const void * a, const void * b) {
 	return ( *(uint16_t*)a - *(uint16_t*)b );
 }
 
-extern float tim;
-
 void nexLoop(BMS_struct *BMS){
 
 	HAL_UART_DMAPause(&huart3);
@@ -109,10 +107,10 @@ void nexLoop(BMS_struct *BMS){
 		NexNumberSetValue(0, 0);
 		NexXfloatSetValue(0, BMS->v_TS/10);
 		NexXfloatSetValue(1, BMS->v_GLV/100);
-		NexXfloatSetValue(2, BMS->charge);
-		NexXfloatSetValue(3, BMS->charge_percent);
-		NexXfloatSetValue(4, (uint16_t)tim);
-		NexXfloatSetValue(5, HAL_GPIO_ReadPin(AIR_AUX_MINUS_GPIO_Port, AIR_AUX_MINUS_Pin));
+		NexXfloatSetValue(2, BMS->v_min);
+		NexXfloatSetValue(3, BMS->v_max);
+		NexXfloatSetValue(4, 1);
+		NexXfloatSetValue(5, BMS->t_max);
 		NexProgressBarSetValue(0, BMS->charge_percent/10);
 
 		NexPictureSetPic(0, 12 + HAL_GPIO_ReadPin(AIR_AUX_PLUS_GPIO_Port, AIR_AUX_PLUS_Pin));

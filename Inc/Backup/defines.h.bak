@@ -46,8 +46,8 @@
 #define OPP_TESTING 	3
 
 #define BMS_MONITORING 	0
-#define BMS_CHARGING 	1
-#define BMS_BALANCING 	2
+#define BMS_CHARGING 	0b01
+#define BMS_BALANCING 	0b10
 
 //BMS COMMUNICATION MODES:
 #define COMM_TC_ONLY 	0
